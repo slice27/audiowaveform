@@ -71,7 +71,7 @@ static void writeVector(std::ostream& stream, const std::vector<T>& values)
 //------------------------------------------------------------------------------
 
 DatFileExporter::DatFileExporter(const Options &options,
-                                 const std::string output_filename):
+                                 const boost::filesystem::path& output_filename):
 	FileExporter(options, output_filename)
 {
 }

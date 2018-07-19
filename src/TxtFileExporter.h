@@ -19,8 +19,8 @@
 // You should have received a copy of the GNU General Public License along with
 // Audio Waveform Image Generator.  If not, see <http://www.gnu.org/licenses/>.
 
-#if !defined(INC_DAT_FILE_EXPORTER_H)
-#define INC_DAT_FILE_EXPORTER_H
+#if !defined(INC_TXT_FILE_EXPORTER_H)
+#define INC_TXT_FILE_EXPORTER_H
 
 #include "FileExporter.h"
 
@@ -28,7 +28,7 @@ class TxtFileExporter: public FileExporter
 {
 	public:
 		TxtFileExporter(const Options &options,
-						 const std::string output_filename);
+						const boost::filesystem::path& output_filename);
 		~TxtFileExporter() = default;
 		
 		TxtFileExporter() = delete;

@@ -28,7 +28,7 @@ class DatFileExporter: public FileExporter
 {
 	public:
 		DatFileExporter(const Options &options,
-						 const std::string output_filename);
+						const boost::filesystem::path& output_filename);
 		~DatFileExporter() = default;
 		
 		DatFileExporter() = delete;

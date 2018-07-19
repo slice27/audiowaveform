@@ -37,6 +37,7 @@
 #include "WavFileWriter.h"
 #include "JsonFileExporter.h"
 #include "DatFileExporter.h"
+#include "TxtFileExporter.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
@@ -225,11 +226,11 @@ bool OptionHandler::convertWaveformData(
     std::vector<std::unique_ptr<WaveformBuffer>> buffers;
 	buffers.push_back(std::make_unique<WaveformBuffer>());
 
-    if (!buffers[0].load(input_filename.string().c_str())) {
+    if (!buffers[0]->load(input_filename.string().c_str())) {
         return false;
     }
 
-    const int bits = options.hasBits() ? options.getBits() : buffer.getBits();
+    const int bits = options.hasBits() ? options.getBits() : buffers[0]->getBits();
 
     bool success = true;
 

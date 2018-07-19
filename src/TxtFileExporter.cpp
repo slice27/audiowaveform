@@ -24,7 +24,7 @@
 #include "WaveformBuffer.h"
 
 TxtFileExporter::TxtFileExporter(const Options &options,
-						 const std::string output_filename):
+						 const boost::filesystem::path& output_filename):
 	FileExporter(options, output_filename)
 {
 }
@@ -33,9 +33,12 @@ void TxtFileExporter::writeHeader(std::ofstream& stream,
                                   const std::uint32_t chan,
                                   const std::uint32_t num_chans,
                                   const std::uint32_t size,
-                                  const std::uint32_t sample_rate_,
-                                  const std::uint32_t samples_per_pixel_)
+                                  const std::uint32_t sample_rate,
+                                  const std::uint32_t samples_per_pixel)
 {
+	if (chan == num_chans == size == sample_rate == samples_per_pixel) {
+		output_stream << "Weirdness!" << std::endl;
+	}
 	std::string filename = getOutputFilename(output_filename_, chan);
 	output_stream << "Writing output file: " << filename << std::endl;
 	stream.open(filename);
@@ -45,14 +48,12 @@ void TxtFileExporter::writeChannel(std::ostream &stream,
                                    WaveformBuffer *data,
                                    const std::uint32_t chan_num)
 {
-	bool success = true;
-
 	const int size = data->getSize();
 
-	if (bits == 8) {
+	if (bits_ == 8) {
 		for (int i = 0; i < size; ++i) {
-			const int min_value = getMinSample(i) / 256;
-			const int max_value = getMaxSample(i) / 256;
+			const int min_value = data->getMinSample(i) / 256;
+			const int max_value = data->getMaxSample(i) / 256;
 
 			stream << min_value << ',' << max_value;
 			if (VERSION_2 == version_) {
@@ -63,12 +64,10 @@ void TxtFileExporter::writeChannel(std::ostream &stream,
 	}
 	else {
 		for (int i = 0; i < size; ++i) {
-			stream << getMinSample(i) << ','
-				 << getMaxSample(i) << '\n';
+			stream << data->getMinSample(i) << ','
+				   << data->getMaxSample(i) << '\n';
 		}
 	}
-    
-    return success;
 }
 
 void TxtFileExporter::writeFooter(std::ofstream& stream)
