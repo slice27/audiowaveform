@@ -50,6 +50,7 @@ class FileExporter
 		
 		virtual void writeHeader(std::ofstream& stream,
 		                         const std::uint32_t chan,
+                                 const std::uint32_t num_chans,
 		                         const std::uint32_t size,
 		                         const std::uint32_t sample_rate_,
 		                         const std::uint32_t samples_per_pixel_) = 0;

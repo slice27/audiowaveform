@@ -49,18 +49,19 @@ bool FileExporter::ExportToFile(std::vector<std::unique_ptr<WaveformBuffer>> &bu
 		int size = buffers[0]->getSize();
 		file.exceptions(std::ios::badbit | std::ios::failbit);
 
-		int chan_num = 0;
+		uint32_t chan = 0;
+		uint32_t num_chans = static_cast<uint32_t>(buffers.size());
 		if (version_ == VERSION_2) {
-			writeHeader(file, chan_num, size, buffers[0]->getSampleRate(),
+			writeHeader(file, chan, num_chans, size, buffers[0]->getSampleRate(),
 			            buffers[0]->getSamplesPerPixel());
 		}
 
 		for_each(buffers.begin(), buffers.end(), [&](auto &buf) {
 			if (version_ == VERSION_1) {
-				writeHeader(file, chan_num, size, buf->getSampleRate(), 
+				writeHeader(file, chan, num_chans, size, buf->getSampleRate(), 
 				                buf->getSamplesPerPixel());
 			}
-			writeChannel(file, buf.get(), chan_num++);
+			writeChannel(file, buf.get(), chan++);
 			
 			if (version_ == VERSION_1) {
 				writeFooter(file);

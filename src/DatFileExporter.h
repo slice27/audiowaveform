@@ -41,6 +41,7 @@ class DatFileExporter: public FileExporter
 	private:
 	    void writeHeader(std::ofstream& stream,
 		                 const std::uint32_t chan,
+                         const std::uint32_t num_chans,
 	                     const std::uint32_t size,
 	                     const std::uint32_t sample_rate_,
 	                     const std::uint32_t samples_per_pixel_);
@@ -49,7 +50,9 @@ class DatFileExporter: public FileExporter
 		                  WaveformBuffer *data,
 		                  const std::uint32_t chan_num);
 
-		void writeFooter(std::ostream& stream);
+		void writeFooter(std::ofstream& stream);
+
+		size_t last_size_ = SIZE_MAX;
 };
 
 #endif

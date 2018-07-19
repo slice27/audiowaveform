@@ -20,7 +20,19 @@
 // Audio Waveform Image Generator.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "DatFileExporter.h"
+#include "Streams.h"
+#include "WaveformBuffer.h"
 
+const uint32_t FLAG_8_BIT = 0x00000001U;
+
+/*******************************************************************************
+*
+* If a version 1 export is requested, this should behave as expected.  If a 
+* version 2 file is requested, the header is written to the file, and the audio
+* channel data is written in a non-interleaved mode.  This means that all
+* channel 0 data will come before the channel 1 data.
+*
+*******************************************************************************/
 
 //------------------------------------------------------------------------------
 
@@ -66,77 +78,51 @@ DatFileExporter::DatFileExporter(const Options &options,
 	
 void DatFileExporter::writeHeader(std::ofstream& stream,
                                   const std::uint32_t chan,
+                                  const std::uint32_t num_chans,
                                   const std::uint32_t size,
                                   const std::uint32_t sample_rate_,
                                   const std::uint32_t samples_per_pixel_)
 {
+	std::string filename = getOutputFilename(output_filename_, chan);
+	output_stream << "Writing output file: " << filename
+                  << "\nResolution: " << bits_ << " bits" << std::endl;
 
+	writeInt32(stream, static_cast<std::int32_t>(version_));
+	writeUInt32(stream, static_cast<std::uint32_t>((bits_ == 8) ? FLAG_8_BIT : 0));
+	writeUInt32(stream, sample_rate_);
+    writeUInt32(stream, samples_per_pixel_);
+    writeUInt32(stream, static_cast<uint32_t>(size));
+	writeUInt32(stream, num_chans);
 }
 
 void DatFileExporter::writeChannel(std::ostream &stream,
                                    WaveformBuffer *data,
                                    const std::uint32_t chan_num)
 {
-
+	size_t curr_size = data->getSize();
+	if (SIZE_MAX != last_size_) {
+		if (curr_size != last_size_) {
+			throw std::runtime_error("Channels are different sizes!");
+		}
+		curr_size = last_size_ = data->getSize();
+	}
+	if (VERSION_2 == version_) {
+		writeUInt32(stream, chan_num);
+	}
+	if (bits_ == 8) {
+		for (size_t i = 0; i < curr_size; ++i) {
+			writeInt8(stream, static_cast<int8_t>(data->getMinSample(i) / 256));
+			writeInt8(stream, static_cast<int8_t>(data->getMaxSample(i) / 256));
+		}
+	} else {
+		writeVector(stream, data->getData());
+	}
 }
 
-void DatFileExporter::writeFooter(std::ostream& stream)
+void DatFileExporter::writeFooter(std::ofstream& stream)
 {
-	
+	stream.flush();
+	stream.close();
 }
 
-/*
-	if (bits != 8 && bits != 16) {
-        error_stream << "Invalid bits: must be either 8 or 16\n";
-        return false;
-    }
-
-    bool success = true;
-
-    std::ofstream file;
-    file.exceptions(std::ios::badbit | std::ios::failbit);
-
-    try {
-        file.open(filename, std::ios::out | std::ios::binary);
-
-        output_stream << "Writing output file: " << filename
-                      << "\nResolution: " << bits << " bits" << std::endl;
-
-        const int32_t version = 1;
-        writeInt32(file, version);
-
-        uint32_t flags = 0;
-
-        if (bits == 8) {
-            flags |= FLAG_8_BIT;
-        }
-
-        writeUInt32(file, flags);
-        writeInt32(file, sample_rate_);
-        writeInt32(file, samples_per_pixel_);
-
-        const int size = getSize();
-
-        writeUInt32(file, static_cast<uint32_t>(size));
-
-        if ((flags & FLAG_8_BIT) != 0) {
-            for (int i = 0; i < size; ++i) {
-                int8_t min_value = static_cast<int8_t>(getMinSample(i) / 256);
-                writeInt8(file, min_value);
-
-                int8_t max_value = static_cast<int8_t>(getMaxSample(i) / 256);
-                writeInt8(file, max_value);
-            }
-        }
-        else {
-            writeVector(file, data_);
-        }
-    }
-    catch (const std::exception&) {
-        reportWriteError(filename, strerror(errno));
-        success = false;
-    }
-
-    return success;
-*/
 

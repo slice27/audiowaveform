@@ -61,12 +61,14 @@ class WaveformBuffer
             data_.resize(static_cast<size_type>(size * 2));
         }
 
-        short getMinSample(int index) const
+		auto getData() const { return data_; }
+
+        short getMinSample(size_t index) const
         {
             return data_[static_cast<size_type>(2 * index)];
         }
 
-        short getMaxSample(int index) const
+        short getMaxSample(size_t index) const
         {
             return data_[static_cast<size_type>(2 * index + 1)];
         }
@@ -84,9 +86,7 @@ class WaveformBuffer
         }
 
         bool load(const char* filename);
-        bool save(const char* filename, int bits = 16) const;
         bool saveAsText(const char* filename, int bits = 16) const;
-        bool saveAsJson(const char* filename, int bits = 16) const;
 
     private:
         int sample_rate_;

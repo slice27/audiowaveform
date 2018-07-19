@@ -32,6 +32,7 @@ JsonFileExporter::JsonFileExporter(const Options &options,
 //------------------------------------------------------------------------------
 void JsonFileExporter::writeHeader(std::ofstream& stream,
                                    const std::uint32_t chan,
+                                   const std::uint32_t num_chans,
                                    const std::uint32_t size,
                                    const std::uint32_t sample_rate_,
                                    const std::uint32_t samples_per_pixel_)
@@ -39,11 +40,12 @@ void JsonFileExporter::writeHeader(std::ofstream& stream,
 	std::string filename = getOutputFilename(output_filename_, chan);
 	output_stream << "Writing output file: " << filename << std::endl;
 	stream.open(filename);
-	stream << "{" << std::endl << "\"sample_rate\":" << sample_rate_ << std::endl
-		   << ",\"samples_per_pixel\":" << samples_per_pixel_ << std::endl
-		   << ",\"bits\":" << bits_ << std::endl
-		   << ",\"length\":" << size << std::endl
-		   << ", \"version\":" << version_ << std::endl;
+	stream << "{" << std::endl << "\t\"sample_rate\":" << sample_rate_ << ',' << std::endl
+	       << "\t\"samples_per_pixel\":" << samples_per_pixel_ << ',' << std::endl
+	       << "\t\"channels\":" << num_chans << ',' << std::endl
+	       << "\t\"bits\":" << bits_ << ',' << std::endl
+	       << "\t\"length\":" << size << ',' << std::endl
+	       << "\t\"version\":" << version_ << ',' << std::endl;
 }
 
 void JsonFileExporter::writeChannel(std::ostream &stream,
@@ -51,9 +53,9 @@ void JsonFileExporter::writeChannel(std::ostream &stream,
                                     const std::uint32_t chan_num)
 {
 	if (version_ == FileExporter::VERSION_1) {
-		stream << ",\"data\":";
+		stream << "\t\"data\":";
 	} else if (version_ == FileExporter::VERSION_2) {
-		stream << ", \"chan" << chan_num << "\":";
+		stream << "\t\"chan" << chan_num << "\":";
 	} else {
 		std::string ex = "Unknown file version! Version: ";
 		ex += version_;
@@ -64,14 +66,14 @@ void JsonFileExporter::writeChannel(std::ostream &stream,
 	int divisor = ((bits_ == 8) ? 256 : 1);
 	
 	if (data->getSize() > 0) {
-		stream << '\t' << (data->getMinSample(0) / divisor) 
+		stream << '\t\t' << (data->getMinSample(0) / divisor) 
 		       << ','  << (data->getMaxSample(0) / divisor);
 		for (int i = 1; i < data->getSize(); ++i) {
 			stream << ',' << (data->getMinSample(i) / divisor) 
 			       << ',' << (data->getMaxSample(i) / divisor);
 		}
 	}
-	stream << ']' << std::endl;
+	stream << std::endl << '\t]' << std::endl;
 }
 
 void JsonFileExporter::writeFooter(std::ofstream &stream)
