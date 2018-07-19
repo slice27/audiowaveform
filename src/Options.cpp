@@ -161,6 +161,10 @@ bool Options::parseCommandLine(int argc, const char* const* argv)
 	    "mono,m",
 	    po::value<bool>(&mono_)->default_value(1),
 	    "mono (1) or stereo (0)"
+	)(
+	    "file-version,f",
+		po::value<int>(&file_version_)->default_value(2),
+		"File version to write.  Currently available, 1 or 2"
 	);
 
     po::variables_map variables_map;

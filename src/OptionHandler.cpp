@@ -202,23 +202,12 @@ bool OptionHandler::generateWaveformData(
 
     assert(output_file_ext == ".dat" || output_file_ext == ".json");
 
-    const int bits = options.getBits();
+	if (output_file_ext == ".dat") {
+	} else {
+		JsonFileExporter json(options, output_filename);
+		json.ExportToFile(buffers);
+	}
 	
-	bool ret = true;
-	int chan_num = 0;
-	for_each(buffers.begin(), buffers.end(), [&](auto &buf) {
-		if (output_file_ext == ".dat") {
-			ret &= buf->save(getOutputFilename(output_filename,
-			                                   chan_num,
-			                                   options).c_str(), bits);
-		}
-		else {
-			ret &= buf->saveAsJson(getOutputFilename(output_filename,
-			                                         chan_num, 
-			                                         options).c_str(), bits);
-		}
-		++chan_num;
-	});
 	return ret;
 }
 
@@ -491,18 +480,6 @@ bool OptionHandler::run(const Options& options)
     }
 
     return success;
-}
-
-std::string OptionHandler::getOutputFilename(const boost::filesystem::path& output_filename, 
-                                             int chan_num, const Options& options)
-{
-	fs::path fn = output_filename;
-	if (!options.getMono()) {
-		fs::path ext = fn.extension();
-		std::string chan_fn = fn.filename().replace_extension("").string();
-		fn.remove_filename().append(chan_fn + "-chan" + std::to_string(chan_num) + ext.string());
-	}
-	return fn.string();
 }
 
 //------------------------------------------------------------------------------

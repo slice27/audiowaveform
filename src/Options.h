@@ -96,6 +96,7 @@ class Options
         bool getVersion() const { return version_; }
 
 		bool getMono() const { return mono_; }
+		int getFileVersion() const { return file_version_; }
 
         void showUsage(std::ostream& stream) const;
         void showVersion(std::ostream& stream) const;
@@ -152,6 +153,7 @@ class Options
 
         int png_compression_level_;
 		bool mono_;
+		int file_version_;
 };
 
 //------------------------------------------------------------------------------
