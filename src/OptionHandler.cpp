@@ -36,6 +36,7 @@
 #include "WaveformRescaler.h"
 #include "WavFileWriter.h"
 #include "JsonFileExporter.h"
+#include "DatFileExporter.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
@@ -205,6 +206,8 @@ bool OptionHandler::generateWaveformData(
 
 	bool ret = false;
 	if (output_file_ext == ".dat") {
+		DatFileExporter dat(options, output_filename);
+		ret = dat.ExportToFile(buffers);
 	} else {
 		JsonFileExporter json(options, output_filename);
 		ret = json.ExportToFile(buffers);
@@ -219,9 +222,10 @@ bool OptionHandler::convertWaveformData(
     const fs::path& output_filename,
     const Options& options)
 {
-    WaveformBuffer buffer;
+    std::vector<std::unique_ptr<WaveformBuffer>> buffers;
+	buffers.push_back(std::make_unique<WaveformBuffer>());
 
-    if (!buffer.load(input_filename.string().c_str())) {
+    if (!buffers[0].load(input_filename.string().c_str())) {
         return false;
     }
 
@@ -232,10 +236,12 @@ bool OptionHandler::convertWaveformData(
     const fs::path output_file_ext = output_filename.extension();
 
     if (output_file_ext == ".json") {
-        success = buffer.saveAsJson(output_filename.string().c_str(), bits);
+		JsonFileExporter json(options, output_filename);
+		success = json.ExportToFile(buffers);
     }
     else if (output_file_ext == ".txt") {
-        success = buffer.saveAsText(output_filename.string().c_str(), bits);
+		TxtFileExporter txt(options, output_filename);
+		success = txt.ExportToFile(buffers);
     }
 
     return success;

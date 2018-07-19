@@ -86,13 +86,16 @@ void DatFileExporter::writeHeader(std::ofstream& stream,
 	std::string filename = getOutputFilename(output_filename_, chan);
 	output_stream << "Writing output file: " << filename
                   << "\nResolution: " << bits_ << " bits" << std::endl;
-
+	stream.open(filename);
+	
 	writeInt32(stream, static_cast<std::int32_t>(version_));
 	writeUInt32(stream, static_cast<std::uint32_t>((bits_ == 8) ? FLAG_8_BIT : 0));
 	writeUInt32(stream, sample_rate_);
     writeUInt32(stream, samples_per_pixel_);
     writeUInt32(stream, static_cast<uint32_t>(size));
-	writeUInt32(stream, num_chans);
+	if (VERSION_2 == version_) {
+		writeUInt32(stream, num_chans);
+	}
 }
 
 void DatFileExporter::writeChannel(std::ostream &stream,

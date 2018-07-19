@@ -24,17 +24,17 @@
 
 #include "FileExporter.h"
 
-class DatFileExporter: public FileExporter
+class TxtFileExporter: public FileExporter
 {
 	public:
-		DatFileExporter(const Options &options,
+		TxtFileExporter(const Options &options,
 						 const std::string output_filename);
-		~DatFileExporter() = default;
+		~TxtFileExporter() = default;
 		
-		DatFileExporter() = delete;
-		DatFileExporter(DatFileExporter &&) = delete;
-		DatFileExporter(const DatFileExporter &) = delete;
-		DatFileExporter& operator=(const DatFileExporter &) = delete;
+		TxtFileExporter() = delete;
+		TxtFileExporter(TxtFileExporter &&) = delete;
+		TxtFileExporter(const TxtFileExporter &) = delete;
+		TxtFileExporter& operator=(const TxtFileExporter &) = delete;
 
 	private:
 	    void writeHeader(std::ofstream& stream,
@@ -49,8 +49,6 @@ class DatFileExporter: public FileExporter
 		                  const std::uint32_t chan_num);
 
 		void writeFooter(std::ofstream& stream);
-
-		size_t last_size_ = SIZE_MAX;
 };
 
 #endif

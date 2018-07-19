@@ -244,6 +244,7 @@ set(MODULES
 	src/FileExporter.cpp
 	src/JsonFileExporter.cpp
 	src/DatFileExporter.cpp
+	src/TxtFileExporter.cpp
 )
 
 set(SRCS
