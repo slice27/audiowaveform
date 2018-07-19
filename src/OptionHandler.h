@@ -68,6 +68,9 @@ class OptionHandler
             const boost::filesystem::path& output_filename,
             const Options& options
         );
+
+		std::string getOutputFilename(const boost::filesystem::path& output_filename, 
+		                              int chan_num, const Options& options);
 };
 
 //------------------------------------------------------------------------------

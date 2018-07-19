@@ -26,6 +26,8 @@
 
 //------------------------------------------------------------------------------
 
+#include <vector>
+#include <memory>
 #include "AudioProcessor.h"
 
 //------------------------------------------------------------------------------
@@ -97,8 +99,9 @@ class WaveformGenerator : public AudioProcessor
 {
     public:
         WaveformGenerator(
-            WaveformBuffer& buffer,
-            const ScaleFactor& scale_factor
+			std::vector<std::unique_ptr<WaveformBuffer>> &buffers,
+            const ScaleFactor& scale_factor,
+			bool isMono = true
         );
 
         WaveformGenerator(const WaveformGenerator&) = delete;
@@ -122,18 +125,20 @@ class WaveformGenerator : public AudioProcessor
         virtual void done();
 
     private:
-        void reset();
+        void reset(int chan_num);
 
     private:
-        WaveformBuffer& buffer_;
+		void process_channel(int sample, int chan_num);
+        std::vector<std::unique_ptr<WaveformBuffer>> &buffers_;
         const ScaleFactor& scale_factor_;
 
         int channels_;
         int samples_per_pixel_;
 
-        int count_;
-        int min_;
-        int max_;
+        std::vector<int> counts_;
+        std::vector<int> mins_;
+        std::vector<int> maxs_;
+		bool mono_;
 };
 
 //------------------------------------------------------------------------------

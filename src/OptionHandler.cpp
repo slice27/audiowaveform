@@ -42,9 +42,11 @@
 #include <cassert>
 #include <string>
 
+namespace fs = boost::filesystem;
+
 //------------------------------------------------------------------------------
 
-static bool useLibSndFile(const boost::filesystem::path& ext)
+static bool useLibSndFile(const fs::path& ext)
 {
     return ext == ".wav" || ext == ".flac" || ext == ".ogg" || ext == ".oga";
 }
@@ -52,11 +54,11 @@ static bool useLibSndFile(const boost::filesystem::path& ext)
 //------------------------------------------------------------------------------
 
 static std::unique_ptr<AudioFileReader> createAudioFileReader(
-    const boost::filesystem::path& filename)
+    const fs::path& filename)
 {
     std::unique_ptr<AudioFileReader> reader;
 
-    const boost::filesystem::path ext = filename.extension();
+    const fs::path ext = filename.extension();
 
     if (useLibSndFile(ext)) {
         reader.reset(new SndFileAudioFileReader);
@@ -122,7 +124,7 @@ static double getDuration(const WaveformBuffer& buffer)
 
 // Returns the duration of the given audio file, in seconds.
 
-static double getDuration(const boost::filesystem::path& input_filename)
+static double getDuration(const fs::path& input_filename)
 {
     std::unique_ptr<AudioFileReader> audio_file_reader(
         createAudioFileReader(input_filename)
@@ -154,8 +156,8 @@ OptionHandler::OptionHandler()
 //------------------------------------------------------------------------------
 
 bool OptionHandler::convertAudioFormat(
-    const boost::filesystem::path& input_filename,
-    const boost::filesystem::path& output_filename)
+    const fs::path& input_filename,
+    const fs::path& output_filename)
 {
     Mp3AudioFileReader reader;
 
@@ -171,13 +173,13 @@ bool OptionHandler::convertAudioFormat(
 //------------------------------------------------------------------------------
 
 bool OptionHandler::generateWaveformData(
-    const boost::filesystem::path& input_filename,
-    const boost::filesystem::path& output_filename,
+    const fs::path& input_filename,
+    const fs::path& output_filename,
     const Options& options)
 {
     const std::unique_ptr<ScaleFactor> scale_factor = createScaleFactor(options);
 
-    const boost::filesystem::path output_file_ext = output_filename.extension();
+    const fs::path output_file_ext = output_filename.extension();
 
     const std::unique_ptr<AudioFileReader> audio_file_reader =
         createAudioFileReader(input_filename);
@@ -191,8 +193,8 @@ bool OptionHandler::generateWaveformData(
         return false;
     }
 
-    WaveformBuffer buffer;
-    WaveformGenerator processor(buffer, *scale_factor);
+    std::vector<std::unique_ptr<WaveformBuffer>> buffers;
+    WaveformGenerator processor(buffers, *scale_factor, options.getMono());
 
     if (!audio_file_reader->run(processor)) {
         return false;
@@ -201,20 +203,30 @@ bool OptionHandler::generateWaveformData(
     assert(output_file_ext == ".dat" || output_file_ext == ".json");
 
     const int bits = options.getBits();
-
-    if (output_file_ext == ".dat") {
-        return buffer.save(output_filename.string().c_str(), bits);
-    }
-    else {
-        return buffer.saveAsJson(output_filename.string().c_str(), bits);
-    }
+	
+	bool ret = true;
+	int chan_num = 0;
+	for_each(buffers.begin(), buffers.end(), [&](auto &buf) {
+		if (output_file_ext == ".dat") {
+			ret &= buf->save(getOutputFilename(output_filename,
+			                                   chan_num,
+			                                   options).c_str(), bits);
+		}
+		else {
+			ret &= buf->saveAsJson(getOutputFilename(output_filename,
+			                                         chan_num, 
+			                                         options).c_str(), bits);
+		}
+		++chan_num;
+	});
+	return ret;
 }
 
 //------------------------------------------------------------------------------
 
 bool OptionHandler::convertWaveformData(
-    const boost::filesystem::path& input_filename,
-    const boost::filesystem::path& output_filename,
+    const fs::path& input_filename,
+    const fs::path& output_filename,
     const Options& options)
 {
     WaveformBuffer buffer;
@@ -227,7 +239,7 @@ bool OptionHandler::convertWaveformData(
 
     bool success = true;
 
-    const boost::filesystem::path output_file_ext = output_filename.extension();
+    const fs::path output_file_ext = output_filename.extension();
 
     if (output_file_ext == ".json") {
         success = buffer.saveAsJson(output_filename.string().c_str(), bits);
@@ -283,8 +295,8 @@ static WaveformColors createWaveformColors(const Options& options)
 //------------------------------------------------------------------------------
 
 bool OptionHandler::renderWaveformImage(
-    const boost::filesystem::path& input_filename,
-    const boost::filesystem::path& output_filename,
+    const fs::path& input_filename,
+    const fs::path& output_filename,
     const Options& options)
 {
     std::unique_ptr<ScaleFactor> scale_factor;
@@ -297,17 +309,18 @@ bool OptionHandler::renderWaveformImage(
 
     int output_samples_per_pixel = 0;
 
-    WaveformBuffer input_buffer;
-
-    const boost::filesystem::path input_file_ext = input_filename.extension();
+	std::vector<std::unique_ptr<WaveformBuffer>> input_buffers;
+    
+    const fs::path input_file_ext = input_filename.extension();
 
     if (input_file_ext == ".dat") {
-        if (!input_buffer.load(input_filename.string().c_str())) {
+		input_buffers.push_back(std::make_unique<WaveformBuffer>());
+        if (!input_buffers[0]->load(input_filename.string().c_str())) {
             return false;
         }
 
         if (calculate_duration) {
-            const double duration = getDuration(input_buffer);
+            const double duration = getDuration(*input_buffers[0]);
 
             scale_factor.reset(
                 new DurationScaleFactor(0.0, duration, options.getImageWidth())
@@ -315,7 +328,7 @@ bool OptionHandler::renderWaveformImage(
         }
 
         output_samples_per_pixel = scale_factor->getSamplesPerPixel(
-            input_buffer.getSampleRate()
+            input_buffers[0]->getSampleRate()
         );
     }
     else {
@@ -339,63 +352,77 @@ bool OptionHandler::renderWaveformImage(
             );
         }
 
-        WaveformGenerator processor(input_buffer, *scale_factor);
+        WaveformGenerator processor(input_buffers, *scale_factor, options.getMono());
 
         if (!audio_file_reader->run(processor)) {
             return false;
         }
 
-        output_samples_per_pixel = input_buffer.getSamplesPerPixel();
+        output_samples_per_pixel = input_buffers[0]->getSamplesPerPixel();
     }
 
-    WaveformBuffer output_buffer;
-    WaveformBuffer* render_buffer = nullptr;
+	int channel = 0;
+	
+	
+	bool ret = true;
+	std::for_each(input_buffers.begin(), input_buffers.end(), [&](auto &b) {
+		int chan = channel++;
+		WaveformBuffer output_buffer;
+		// Assume no rescale is required, and default render_buffer to channel buffer.
+		WaveformBuffer* render_buffer = b.get();
+		const int input_samples_per_pixel = render_buffer->getSamplesPerPixel();
 
-    const int input_samples_per_pixel = input_buffer.getSamplesPerPixel();
+		
+		if (output_samples_per_pixel > input_samples_per_pixel) {
+			// Need to rescale.  Use the render_buffer and rescale into output_buffer.
+			WaveformRescaler rescaler;
 
-    if (output_samples_per_pixel == input_samples_per_pixel) {
-        // No need to rescale
-        render_buffer = &input_buffer;
-    }
-    else if (output_samples_per_pixel > input_samples_per_pixel) {
-        WaveformRescaler rescaler;
+			if (!rescaler.rescale(
+			    *render_buffer,
+			    output_buffer,
+			    output_samples_per_pixel))
+			{
+				return (ret &= false);
+			}
+			// Render from the now rescaled output_buffer.
+			render_buffer = &output_buffer;
+		}
+		else if (output_samples_per_pixel < input_samples_per_pixel) {
+			// Can't rescale.  Not enough resolution on input.
+			error_stream << "Invalid zoom, minimum: " << input_samples_per_pixel << '\n';
+			return (ret &= false);
+		}
 
-        if (!rescaler.rescale(
-            input_buffer,
-            output_buffer,
-            output_samples_per_pixel))
-        {
-            return false;
-        }
+		const WaveformColors colors = createWaveformColors(options);
 
-        render_buffer = &output_buffer;
-    }
-    else {
-        error_stream << "Invalid zoom, minimum: " << input_samples_per_pixel << '\n';
-        return false;
-    }
+		GdImageRenderer renderer;
 
-    const WaveformColors colors = createWaveformColors(options);
-
-    GdImageRenderer renderer;
-
-    if (!renderer.create(
-        *render_buffer,
-        options.getStartTime(),
-        options.getImageWidth(),
-        options.getImageHeight(),
-        colors,
-        options.getRenderAxisLabels(),
-        options.isAutoAmplitudeScale(),
-        options.getAmplitudeScale()))
-    {
-        return false;
-    }
-
-    return renderer.saveAsPng(
-        output_filename.string().c_str(),
-        options.getPngCompressionLevel()
-    );
+		std::string filename = getOutputFilename(output_filename, chan, options);
+		
+		output_stream << "Saving to file: " << filename << std::endl;
+		if (!renderer.create(
+			                 *render_buffer,
+			                 options.getStartTime(),
+			                 options.getImageWidth(),
+			                 options.getImageHeight(),
+			                 colors,
+			                 options.getRenderAxisLabels(),
+			                 options.isAutoAmplitudeScale(),
+			                 options.getAmplitudeScale()))
+		{
+			error_stream << "Unable to render PNG: " << filename << '\n';
+			return (ret &= false);
+		}
+		if (!renderer.saveAsPng(filename.c_str(),
+		                        options.getPngCompressionLevel()
+		)) {
+			error_stream << "Unable to save PNG: " << filename << '\n';
+			return (ret &= false);
+		}
+		return true;
+	});
+	
+	return ret;
 }
 
 //------------------------------------------------------------------------------
@@ -411,11 +438,11 @@ bool OptionHandler::run(const Options& options)
         return true;
     }
 
-    const boost::filesystem::path input_filename  = options.getInputFilename();
-    const boost::filesystem::path output_filename = options.getOutputFilename();
+    const fs::path input_filename  = options.getInputFilename();
+    const fs::path output_filename = options.getOutputFilename();
 
-    const boost::filesystem::path input_file_ext  = input_filename.extension();
-    const boost::filesystem::path output_file_ext = output_filename.extension();
+    const fs::path input_file_ext  = input_filename.extension();
+    const fs::path output_file_ext = output_filename.extension();
 
     bool success;
 
@@ -464,6 +491,18 @@ bool OptionHandler::run(const Options& options)
     }
 
     return success;
+}
+
+std::string OptionHandler::getOutputFilename(const boost::filesystem::path& output_filename, 
+                                             int chan_num, const Options& options)
+{
+	fs::path fn = output_filename;
+	if (!options.getMono()) {
+		fs::path ext = fn.extension();
+		std::string chan_fn = fn.filename().replace_extension("").string();
+		fn.remove_filename().append(chan_fn + "-chan" + std::to_string(chan_num) + ext.string());
+	}
+	return fn.string();
 }
 
 //------------------------------------------------------------------------------

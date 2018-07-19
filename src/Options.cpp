@@ -157,7 +157,11 @@ bool Options::parseCommandLine(int argc, const char* const* argv)
         "compression",
         po::value<int>(&png_compression_level_)->default_value(-1),
         "PNG compression level: 0 (none) to 9 (best), or -1 (default)"
-    );
+    )(
+	    "mono,m",
+	    po::value<bool>(&mono_)->default_value(1),
+	    "mono (1) or stereo (0)"
+	);
 
     po::variables_map variables_map;
 

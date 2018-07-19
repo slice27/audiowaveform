@@ -95,6 +95,8 @@ class Options
         bool getHelp() const { return help_; }
         bool getVersion() const { return version_; }
 
+		bool getMono() const { return mono_; }
+
         void showUsage(std::ostream& stream) const;
         void showVersion(std::ostream& stream) const;
 
@@ -149,6 +151,7 @@ class Options
         double amplitude_scale_;
 
         int png_compression_level_;
+		bool mono_;
 };
 
 //------------------------------------------------------------------------------
