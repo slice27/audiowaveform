@@ -243,6 +243,7 @@ set(MODULES
     src/madlld-1.1p1/bstdfile.c
 	src/FileExporter.cpp
 	src/JsonFileExporter.cpp
+	src/DatFileExporter.cpp
 )
 
 set(SRCS
