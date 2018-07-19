@@ -23,47 +23,47 @@
 #define INC_FILE_EXPORTER_H
 
 #include <vector>
+#include <memory>
+#include <boost/filesystem.hpp>
 
 class WaveformBuffer;
+class Options;
 
 class FileExporter
 {
 	public:
-		~FileExporter();
+		~FileExporter() = default;
 		
-		bool ExportToFile(std::vector<std::unique_ptr<WaveformBuffer>> &buffers, 
-		                  std::string filename) = 0;
+		bool ExportToFile(std::vector<std::unique_ptr<WaveformBuffer>> &buffers);
 
-		constexpr enum {
+		typedef enum {
 			VERSION_1 = 1U,
 			VERSION_2
 		} FILE_VERSION;
  
 	protected:
 		FileExporter(const Options &options,
-					 const std::string output_filename) :
-		    bits_(options.getBits()),
-		    options_(options),
-			output_filename_(output_filename),
-		    version_(options.getFileVersion()) {}
+					 const boost::filesystem::path& output_filename);
 			
-		std::string OptionHandler::getOutputFilename(const boost::filesystem::path& output_filename, 
-                                                     int chan_num) {
-			fs::path fn = output_filename;
-			if (!options_.getMono() && (version_ == VERSION_1)) {
-				// If this isn't a mono waveform, but writing as a version 1 file, then append
-				// the channel number to the filename.
-				fs::path ext = fn.extension();
-				std::string chan_fn = fn.filename().replace_extension("").string();
-				fn.remove_filename().append(chan_fn + "-chan" + std::to_string(chan_num) + ext.string());
-			}
-			return fn.string();
-		}
+		std::string getOutputFilename(const boost::filesystem::path& output_filename, 
+                                      int chan_num);
+		
+		virtual void writeHeader(std::ofstream& stream,
+		                         const std::uint32_t chan,
+		                         const std::uint32_t size,
+		                         const std::uint32_t sample_rate_,
+		                         const std::uint32_t samples_per_pixel_) = 0;
+
+		virtual void writeChannel(std::ostream &stream,
+		                  WaveformBuffer *data,
+		                  const std::uint32_t chan_num) = 0;
+
+		virtual void writeFooter(std::ofstream& stream) = 0;
 
 		std::uint32_t bits_;
 		FILE_VERSION version_;
 		const Options &options_;
-		std::string output_filename_;
-}
+		const boost::filesystem::path& output_filename_;
+};
 
 #endif

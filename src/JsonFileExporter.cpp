@@ -19,84 +19,45 @@
 // You should have received a copy of the GNU General Public License along with
 // Audio Waveform Image Generator.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "FileExporter.h"
+#include "JsonFileExporter.h"
+#include "Streams.h"
+#include "WaveformBuffer.h"
 
 JsonFileExporter::JsonFileExporter(const Options &options,
-								   const std::string output_filename) :
-	FileExporter(options, filename)
+                                   const boost::filesystem::path& output_filename) :
+	FileExporter(options, output_filename)
 {
-}
-
-bool JsonFileExporter::ExportToFile(std::vector<std::unique_ptr<WaveformBuffer>> &buffers)
-{
-	bool ret = true;
-	try {
-		if (bits_ != 8 && bits_ != 16) {
-			throw std::runtime_error("Invalid bits: must be either 8 or 16");
-			return false;
-		}
-
-		std::ofstream file;
-		int size = buffers[0]->getSize();
-		file.exceptions(std::ios::badbit | std::ios::failbit);
-
-		if (version_ == VERSION_2) {
-			writeJsonHeader(file, size, buffers[0]->getSampleRate(),
-			                buffers[0]->getSamplesPerPixel());
-		}
-
-		int chan_num = 0;
-		for_each(buffers.begin(), buffers.end(), [&](auto &buf) {
-			if (version_ == VERSION_1) {
-				writeJsonHeader(file, size, buf->getSampleRate(), 
-				                buf->getSamplesPerPixel());
-			}
-			writeJsonChannel(file, buf.get(), chan_num++);
-			
-			if (version_ == VERSION_1) {
-				writeJsonFooter(file);
-			}
-		}
-		});
-		if (version_ == VERSION_2) {
-			writeJsonFooter(file);
-		}	
-		
-	} catch (const std::exception& e) {
-		error_stream << e.what() << std::endl;
-		ret = false;
-	}
-	return ret;
 }
 
 //------------------------------------------------------------------------------
-void JsonFileExporter::writeJsonHeader(std::ostream& stream,
-                                       const std::uint32_t size,
-									   const std::uint32_t sample_rate_,
-									   const std::uint32_t samples_per_pixel_)
+void JsonFileExporter::writeHeader(std::ofstream& stream,
+                                   const std::uint32_t chan,
+                                   const std::uint32_t size,
+                                   const std::uint32_t sample_rate_,
+                                   const std::uint32_t samples_per_pixel_)
 {
-	string filename = getOutputFilename(output_filename_);
+	std::string filename = getOutputFilename(output_filename_, chan);
 	output_stream << "Writing output file: " << filename << std::endl;
-	file.open(filename);
-	stream << "{" << std::endl << "\"sample_rate\":" << sample_rate_ << std::endl;
-		   << ",\"samples_per_pixel\":" << samples_per_pixel_ << std::endl;
-		   << ",\"bits\":" << bits_ << std::endl;
-		   << ",\"length\":" << size << std::endl;
+	stream.open(filename);
+	stream << "{" << std::endl << "\"sample_rate\":" << sample_rate_ << std::endl
+		   << ",\"samples_per_pixel\":" << samples_per_pixel_ << std::endl
+		   << ",\"bits\":" << bits_ << std::endl
+		   << ",\"length\":" << size << std::endl
 		   << ", \"version\":" << version_ << std::endl;
 }
 
-void JsonFileExporter::writeJsonChannel(std::ostream &stream,
-                                        WaveformBuffer *data,
-                                        const std::uint32_t chan_num)
+void JsonFileExporter::writeChannel(std::ostream &stream,
+                                    WaveformBuffer *data,
+                                    const std::uint32_t chan_num)
 {
-	if (version == FileExporter::VERSION_1) {
+	if (version_ == FileExporter::VERSION_1) {
 		stream << ",\"data\":";
-	} else if (version == FileExporter::VERSION_2) {
+	} else if (version_ == FileExporter::VERSION_2) {
 		stream << ", \"chan" << chan_num << "\":";
 	} else {
-		string exception = "Unknown file version! Version: ";
-		exception += version;
-		throw std::runtime_error(exception);
+		std::string ex = "Unknown file version! Version: ";
+		ex += version_;
+		throw std::runtime_error(ex);
 	}
 	
 	stream << '[' << std::endl;
@@ -113,7 +74,7 @@ void JsonFileExporter::writeJsonChannel(std::ostream &stream,
 	stream << ']' << std::endl;
 }
 
-void JsonFileExporter::writeJsonFooter(std::ostream &stream)
+void JsonFileExporter::writeFooter(std::ofstream &stream)
 {
 	stream << '}' << std::endl;
 	stream.flush();

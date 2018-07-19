@@ -35,6 +35,7 @@
 #include "WaveformGenerator.h"
 #include "WaveformRescaler.h"
 #include "WavFileWriter.h"
+#include "JsonFileExporter.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
@@ -202,12 +203,12 @@ bool OptionHandler::generateWaveformData(
 
     assert(output_file_ext == ".dat" || output_file_ext == ".json");
 
+	bool ret = false;
 	if (output_file_ext == ".dat") {
 	} else {
 		JsonFileExporter json(options, output_filename);
-		json.ExportToFile(buffers);
+		ret = json.ExportToFile(buffers);
 	}
-	
 	return ret;
 }
 
@@ -386,7 +387,7 @@ bool OptionHandler::renderWaveformImage(
 
 		GdImageRenderer renderer;
 
-		std::string filename = getOutputFilename(output_filename, chan, options);
+		std::string filename = "";//getOutputFilename(output_filename, chan, options);
 		
 		output_stream << "Saving to file: " << filename << std::endl;
 		if (!renderer.create(

@@ -182,7 +182,7 @@ if(CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.6.3")
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.7")
-    set(CMAKE_CXX_FLAGS "-std=c++11")
+    set(CMAKE_CXX_FLAGS "-std=c++14")
 else()
     # Set GTEST_LANG_CXX11=0 to disable C++11 features when compiling googlemock.
     # Without this compilation fails with g++ 4.6.3 on gmock-matchers.h.
@@ -241,6 +241,8 @@ set(MODULES
     src/WaveformRescaler.cpp
     src/WavFileWriter.cpp
     src/madlld-1.1p1/bstdfile.c
+	src/FileExporter.cpp
+	src/JsonFileExporter.cpp
 )
 
 set(SRCS
@@ -275,7 +277,7 @@ target_link_libraries(audiowaveform ${LIBS})
 #-------------------------------------------------------------------------------
 
 if (NOT DEFINED ENABLE_TESTS)
-    set(ENABLE_TESTS 1)
+    set(ENABLE_TESTS 0)
 endif()
 
 if(ENABLE_TESTS)

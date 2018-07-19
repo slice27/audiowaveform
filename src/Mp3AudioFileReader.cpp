@@ -561,7 +561,7 @@ bool Mp3AudioFileReader::run(AudioProcessor& processor)
             }
 
             // Pipe the new buffer content to libmad's stream decoder facility.
-            mad_stream_buffer(&stream, input_buffer, read_size + remaining);
+            mad_stream_buffer(&stream, input_buffer, static_cast<unsigned long>(read_size + remaining));
             stream.error = MAD_ERROR_NONE;
         }
 
