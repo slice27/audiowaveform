@@ -101,6 +101,8 @@ WaveformBuffer::WaveformBuffer() :
     samples_per_pixel_(0),
     bits_(16)
 {
+	// Must always have at least one channel.
+	channels_.push_back(vector_type());
 }
 
 //------------------------------------------------------------------------------
@@ -142,10 +144,12 @@ bool WaveformBuffer::load(const char* filename)
 
             for (uint32_t i = 0; i < size; ++i) {
                 int8_t min_value = readInt8(file);
-                data_.push_back(static_cast<int16_t>(min_value * 256));
+                channels_[0].push_back(static_cast<short>(
+				                       static_cast<int16_t>(min_value) * 256));
 
                 int8_t max_value = readInt8(file);
-                data_.push_back(static_cast<int16_t>(max_value * 256));
+                channels_[0].push_back(static_cast<short>(
+				                       static_cast<int16_t>(max_value) * 256));
             }
         }
         else {
@@ -153,10 +157,10 @@ bool WaveformBuffer::load(const char* filename)
 
             for (uint32_t i = 0; i < size; ++i) {
                 int16_t min_value = readInt16(file);
-                data_.push_back(min_value);
+                channels_[0].push_back(min_value);
 
                 int16_t max_value = readInt16(file);
-                data_.push_back(max_value);
+                channels_[0].push_back(max_value);
             }
         }
 

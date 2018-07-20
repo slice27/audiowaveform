@@ -118,9 +118,9 @@ static std::unique_ptr<ScaleFactor> createScaleFactor(const Options& options)
 
 // Returns the equivalent audio duration of the given waveform buffer.
 
-static double getDuration(const WaveformBuffer& buffer)
+static double getDuration(const WaveformBuffer& buffer, int chan = 0)
 {
-    return buffer.getSize() * buffer.getSamplesPerPixel() / buffer.getSampleRate();
+    return buffer.getSize(chan) * buffer.getSamplesPerPixel() / buffer.getSampleRate();
 }
 
 //------------------------------------------------------------------------------
@@ -196,8 +196,8 @@ bool OptionHandler::generateWaveformData(
         return false;
     }
 
-    std::vector<std::unique_ptr<WaveformBuffer>> buffers;
-    WaveformGenerator processor(buffers, *scale_factor, options.getMono());
+	WaveformBuffer buffer;
+    WaveformGenerator processor(buffer, *scale_factor, options.getMono());
 
     if (!audio_file_reader->run(processor)) {
         return false;
@@ -207,11 +207,11 @@ bool OptionHandler::generateWaveformData(
 
 	bool ret = false;
 	if (output_file_ext == ".dat") {
-		DatFileExporter dat(options, output_filename);
-		ret = dat.ExportToFile(buffers);
+		DatFileExporter dat(buffer, options, output_filename);
+		ret = dat.ExportToFile();
 	} else {
-		JsonFileExporter json(options, output_filename);
-		ret = json.ExportToFile(buffers);
+		JsonFileExporter json(buffer, options, output_filename);
+		ret = json.ExportToFile();
 	}
 	return ret;
 }
@@ -223,16 +223,17 @@ bool OptionHandler::convertWaveformData(
     const fs::path& output_filename,
     const Options& options)
 {
-    std::vector<std::unique_ptr<WaveformBuffer>> buffers;
-	buffers.push_back(std::make_unique<WaveformBuffer>());
+	bool success = true;
+	WaveformBuffer buffer;
 
+	/* TODO: Rewrite all this:
     if (!buffers[0]->load(input_filename.string().c_str())) {
         return false;
     }
 
     const int bits = options.hasBits() ? options.getBits() : buffers[0]->getBits();
 
-    bool success = true;
+    
 
     const fs::path output_file_ext = output_filename.extension();
 
@@ -244,7 +245,7 @@ bool OptionHandler::convertWaveformData(
 		TxtFileExporter txt(options, output_filename);
 		success = txt.ExportToFile(buffers);
     }
-
+	*/
     return success;
 }
 
@@ -296,6 +297,7 @@ bool OptionHandler::renderWaveformImage(
     const fs::path& output_filename,
     const Options& options)
 {
+	/* TODO: Rewrite this
     std::unique_ptr<ScaleFactor> scale_factor;
 
     const bool calculate_duration = options.isAutoSamplesPerPixel();
@@ -420,6 +422,8 @@ bool OptionHandler::renderWaveformImage(
 	});
 	
 	return ret;
+	*/
+	return false;
 }
 
 //------------------------------------------------------------------------------

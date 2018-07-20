@@ -23,53 +23,42 @@
 #include "Options.h"
 #include "WaveformBuffer.h"
 #include "Streams.h"
+#include "Utils.h"
 
 namespace fs = boost::filesystem;
 
-FileExporter::FileExporter(const Options &options,
+FileExporter::FileExporter(WaveformBuffer &buffer,
+                           const Options &options,
                            const boost::filesystem::path& output_filename) :
-		    bits_(options.getBits()),
-			version_(static_cast<FILE_VERSION>(options.getFileVersion())),
+		    buffer_(buffer),
 		    options_(options),
 			output_filename_(output_filename)
 {
 	
 }
 			
-bool FileExporter::ExportToFile(std::vector<std::unique_ptr<WaveformBuffer>> &buffers)
+bool FileExporter::ExportToFile()
 {
 	bool ret = true;
 	try {
-		if (bits_ != 8 && bits_ != 16) {
+		int bits = options_.getBits();
+		if (bits != 8 && bits != 16) {
 			throw std::runtime_error("Invalid bits: must be either 8 or 16");
+			return false;
+		}
+		
+		FILE_VERSION version = static_cast<FILE_VERSION>(options_.getFileVersion());
+		if ((FileExporter::VERSION_1 != version) || (FileExporter::VERSION_2 != version)) {
+			throw std::runtime_error("Unknown file version.  Version: " + std::to_string(version) + " - Version must be either 1 or 2");
 			return false;
 		}
 
 		std::ofstream file;
-		int size = buffers[0]->getSize();
 		file.exceptions(std::ios::badbit | std::ios::failbit);
 
-		uint32_t chan = 0;
-		uint32_t num_chans = static_cast<uint32_t>(buffers.size());
-		if (version_ == VERSION_2) {
-			writeHeader(file, chan, num_chans, size, buffers[0]->getSampleRate(),
-			            buffers[0]->getSamplesPerPixel());
-		}
-
-		for_each(buffers.begin(), buffers.end(), [&](auto &buf) {
-			if (version_ == VERSION_1) {
-				writeHeader(file, chan, num_chans, size, buf->getSampleRate(), 
-				                buf->getSamplesPerPixel());
-			}
-			writeChannel(file, buf.get(), chan++);
-			
-			if (version_ == VERSION_1) {
-				writeFooter(file);
-			}
-		});
-		if (version_ == VERSION_2) {
-			writeFooter(file);
-		}	
+		writeHeader(file);
+		writeData(file);
+		writeFooter(file);
 		
 	} catch (const std::exception& e) {
 		error_stream << e.what() << std::endl;
@@ -78,10 +67,14 @@ bool FileExporter::ExportToFile(std::vector<std::unique_ptr<WaveformBuffer>> &bu
 	return ret;
 }
 
+bool FileExporter::needNewFile() {
+	return (!options_.getMono() && (options_.getFileVersion() == VERSION_1));
+}
+
 std::string FileExporter::getOutputFilename(const boost::filesystem::path& output_filename, 
                                             int chan_num) {
 	fs::path fn = output_filename;
-	if (!options_.getMono() && (version_ == VERSION_1)) {
+	if (needNewFile()) {
 		// If this isn't a mono waveform, but writing as a version 1 file, then append
 		// the channel number to the filename.
 		fs::path ext = fn.extension();
@@ -90,3 +83,36 @@ std::string FileExporter::getOutputFilename(const boost::filesystem::path& outpu
 	}
 	return fn.string();
 }
+
+bool FileExporter::openFile(std::ofstream& stream, int chan, std::string& filename)
+{
+	if ((!stream.is_open()) || needNewFile()) {
+		if (stream.is_open()) {
+			closeFile(stream);
+		}
+		filename = getOutputFilename(output_filename_, chan);
+		stream.open(filename);
+		return true;
+	}
+	return false;
+}
+
+void FileExporter::closeFile(std::ofstream& stream, int chan)
+{
+	UNUSED(chan);
+	if (needNewFile()) {
+		closeFile(stream);
+	}
+}
+
+//------------------------------------------------------------------------------
+
+void FileExporter::closeFile(std::ofstream& stream)
+{
+	if (stream.is_open()) {
+		stream.flush();
+		stream.close();
+	}
+}
+
+//------------------------------------------------------------------------------

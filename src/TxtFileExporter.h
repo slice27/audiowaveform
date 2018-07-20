@@ -27,7 +27,8 @@
 class TxtFileExporter: public FileExporter
 {
 	public:
-		TxtFileExporter(const Options &options,
+		TxtFileExporter(WaveformBuffer &buffer,
+		                const Options &options,
 						const boost::filesystem::path& output_filename);
 		~TxtFileExporter() = default;
 		
@@ -37,18 +38,12 @@ class TxtFileExporter: public FileExporter
 		TxtFileExporter& operator=(const TxtFileExporter &) = delete;
 
 	private:
-	    void writeHeader(std::ofstream& stream,
-		                 const std::uint32_t chan,
-                         const std::uint32_t num_chans,
-	                     const std::uint32_t size,
-	                     const std::uint32_t sample_rate_,
-	                     const std::uint32_t samples_per_pixel_);
-
-		void writeChannel(std::ostream &stream,
-		                  WaveformBuffer *data,
-		                  const std::uint32_t chan_num);
-
+	    void writeHeader(std::ofstream& stream);
+		void writeData(std::ofstream &stream);
 		void writeFooter(std::ofstream& stream);
+
+		void prepareData(std::ofstream& stream, int chan, size_t len, FILE_VERSION version);
+		int bits_;
 };
 
 #endif

@@ -121,10 +121,10 @@ const int RESET_COUNT = 0;
 //------------------------------------------------------------------------------
 
 WaveformGenerator::WaveformGenerator(
-    std::vector<std::unique_ptr<WaveformBuffer>> &buffers,
+    WaveformBuffer &buffer,
 	const ScaleFactor& scale_factor,
 	bool isMono) :
-    buffers_(buffers),
+    buffer_(buffer),
     scale_factor_(scale_factor),
     channels_(0),
     samples_per_pixel_(0),
@@ -153,17 +153,16 @@ bool WaveformGenerator::init(
         return false;
     }
 	for (int i = 0; i < (mono_ ? (MONO_CHANNEL+1) : channels_); ++i) {
-		buffers_.push_back(std::make_unique<WaveformBuffer>());
 		counts_.push_back(RESET_COUNT);
 		mins_.push_back(MAX_SAMPLE);
 		maxs_.push_back(MIN_SAMPLE);
-		buffers_[i]->setSamplesPerPixel(samples_per_pixel_);
-		buffers_[i]->setSampleRate(sample_rate);
+		buffer_.setSamplesPerPixel(samples_per_pixel_);
+		buffer_.setSampleRate(sample_rate);
 	}
 
-    output_stream << "Generating waveform data...\n"
-                  << "Samples per pixel: " << samples_per_pixel_ << '\n'
-                  << "Input channels: " << channels_ << '\n';
+    output_stream << "Generating waveform data..." << std::endl
+                  << "Samples per pixel: " << samples_per_pixel_ << std::endl
+                  << "Input channels: " << channels_ << std::endl;
 
     return true;
 }
@@ -188,15 +187,12 @@ void WaveformGenerator::reset(int chan_num)
 
 void WaveformGenerator::done()
 {
-	// In mono output mode, there can be more than 1 channel, but only one buffer.
-	// Thus we use buffers_.size() instead of channels_ as the bounds condition
-	// of this for loop.
-	for (size_t chan = 0; chan < buffers_.size(); ++chan) {
+	for (int chan = 0; chan < buffer_.getNumChannels(); ++chan) {
 		if (counts_[chan] > RESET_COUNT) {
-			buffers_[chan]->appendSamples(static_cast<short>(mins_[chan]), 
-			                              static_cast<short>(maxs_[chan]));
+			buffer_.appendSamples(static_cast<short>(mins_[chan]), 
+			                      static_cast<short>(maxs_[chan]), chan);
 			output_stream << "(channel " << chan+1 << ") Generated " 
-			              << buffers_[chan]->getSize() << " points" << std::endl;
+			              << buffer_.getSize(chan) << " points" << std::endl;
 			reset(static_cast<int>(chan));
 		}
 	}
@@ -251,8 +247,9 @@ void WaveformGenerator::process_channel(int sample, int chan_num)
 	}
 
 	if (++counts_[chan_num] == samples_per_pixel_) {
-		buffers_[chan_num]->appendSamples(static_cast<short>(mins_[chan_num]), 
-		                                  static_cast<short>(maxs_[chan_num]));
+		buffer_.appendSamples(static_cast<short>(mins_[chan_num]), 
+		                      static_cast<short>(maxs_[chan_num]),
+		                      chan_num);
 		reset(chan_num);
 	}
 }

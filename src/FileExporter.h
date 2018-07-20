@@ -34,7 +34,7 @@ class FileExporter
 	public:
 		~FileExporter() = default;
 		
-		bool ExportToFile(std::vector<std::unique_ptr<WaveformBuffer>> &buffers);
+		bool ExportToFile();
 
 		typedef enum {
 			VERSION_1 = 1U,
@@ -42,27 +42,23 @@ class FileExporter
 		} FILE_VERSION;
  
 	protected:
-		FileExporter(const Options &options,
+		FileExporter(WaveformBuffer& buffer,
+		             const Options &options,
 					 const boost::filesystem::path& output_filename);
 			
+		bool needNewFile();
 		std::string getOutputFilename(const boost::filesystem::path& output_filename, 
                                       int chan_num);
 		
-		virtual void writeHeader(std::ofstream& stream,
-		                         const std::uint32_t chan,
-                                 const std::uint32_t num_chans,
-		                         const std::uint32_t size,
-		                         const std::uint32_t sample_rate_,
-		                         const std::uint32_t samples_per_pixel_) = 0;
-
-		virtual void writeChannel(std::ostream &stream,
-		                  WaveformBuffer *data,
-		                  const std::uint32_t chan_num) = 0;
-
+		bool openFile(std::ofstream& stream, int chan, std::string& filename);
+		void closeFile(std::ofstream& stream, int chan);
+		void closeFile(std::ofstream& stream);
+		
+		virtual void writeHeader(std::ofstream& stream) = 0;
+		virtual void writeData(std::ofstream &stream) = 0;
 		virtual void writeFooter(std::ofstream& stream) = 0;
 
-		std::uint32_t bits_;
-		FILE_VERSION version_;
+		WaveformBuffer &buffer_;
 		const Options &options_;
 		const boost::filesystem::path& output_filename_;
 };

@@ -27,7 +27,8 @@
 class JsonFileExporter: public FileExporter
 {
 	public:
-		JsonFileExporter(const Options &options,
+		JsonFileExporter(WaveformBuffer &buffer,
+		                 const Options &options,
 						 const boost::filesystem::path& output_filename);
 		~JsonFileExporter() = default;
 		
@@ -37,18 +38,14 @@ class JsonFileExporter: public FileExporter
 		JsonFileExporter& operator=(const JsonFileExporter &) = delete;
 
 	private:
-	    void writeHeader(std::ofstream& stream,
-		                 const std::uint32_t chan,
-                         const std::uint32_t num_chans,
-	                     const std::uint32_t size,
-	                     const std::uint32_t sample_rate_,
-	                     const std::uint32_t samples_per_pixel_);
-
-		void writeChannel(std::ostream &stream,
-		                  WaveformBuffer *data,
-		                  const std::uint32_t chan_num);
-
+	    void writeHeader(std::ofstream& stream);
+		void writeData(std::ofstream &stream);
 		void writeFooter(std::ofstream& stream);
+		
+		void prepareHeader(std::ofstream& stream, int chan, FILE_VERSION version);
+		void prepareData(std::ofstream& stream, int chan, FILE_VERSION version);
+		void prepareFooter(std::ofstream& stream);
+
 };
 
 #endif

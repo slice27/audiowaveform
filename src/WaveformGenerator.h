@@ -99,7 +99,7 @@ class WaveformGenerator : public AudioProcessor
 {
     public:
         WaveformGenerator(
-			std::vector<std::unique_ptr<WaveformBuffer>> &buffers,
+			WaveformBuffer &buffer,
             const ScaleFactor& scale_factor,
 			bool isMono = true
         );
@@ -129,7 +129,7 @@ class WaveformGenerator : public AudioProcessor
 
     private:
 		void process_channel(int sample, int chan_num);
-        std::vector<std::unique_ptr<WaveformBuffer>> &buffers_;
+        WaveformBuffer &buffer_;
         const ScaleFactor& scale_factor_;
 
         int channels_;

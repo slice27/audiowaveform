@@ -22,56 +22,70 @@
 #include "TxtFileExporter.h"
 #include "Streams.h"
 #include "WaveformBuffer.h"
+#include "Options.h"
+#include "Utils.h"
 
-TxtFileExporter::TxtFileExporter(const Options &options,
-						 const boost::filesystem::path& output_filename):
-	FileExporter(options, output_filename)
+TxtFileExporter::TxtFileExporter(WaveformBuffer &buffer,
+                                 const Options &options,
+                                 const boost::filesystem::path& output_filename):
+	FileExporter(buffer, options, output_filename),
+	bits_(options.getBits())
 {
 }
-	
-void TxtFileExporter::writeHeader(std::ofstream& stream,
-                                  const std::uint32_t chan,
-                                  const std::uint32_t num_chans,
-                                  const std::uint32_t size,
-                                  const std::uint32_t sample_rate,
-                                  const std::uint32_t samples_per_pixel)
+
+
+void TxtFileExporter::writeHeader(std::ofstream& stream)
 {
-	if (chan == num_chans == size == sample_rate == samples_per_pixel) {
-		output_stream << "Weirdness!" << std::endl;
+	UNUSED(stream);
+	if (!buffer_.channelSizesMatch()) {
+		throw std::runtime_error("TxtFileExporter::writeHeader: channel sizes do not match.");
+		return;
 	}
-	std::string filename = getOutputFilename(output_filename_, chan);
-	output_stream << "Writing output file: " << filename << std::endl;
-	stream.open(filename);
+	// No headers required for text file.
 }
 
-void TxtFileExporter::writeChannel(std::ostream &stream,
-                                   WaveformBuffer *data,
-                                   const std::uint32_t chan_num)
+void TxtFileExporter::writeData(std::ofstream &stream)
 {
-	const int size = data->getSize();
-
-	if (bits_ == 8) {
-		for (int i = 0; i < size; ++i) {
-			const int min_value = data->getMinSample(i) / 256;
-			const int max_value = data->getMaxSample(i) / 256;
-
-			stream << min_value << ',' << max_value;
-			if (VERSION_2 == version_) {
-				stream << ',' << chan_num;
+	FILE_VERSION version = static_cast<FILE_VERSION>(options_.getFileVersion());
+	std::string filename;
+	WaveformBuffer::size_type size = buffer_.getSize();
+	if (needNewFile()) {
+		for (int chan = 0; chan < buffer_.getNumChannels(); ++chan) {
+			openFile(stream, chan, filename);
+			output_stream << "Writing channel " << std::to_string(chan) << " to output file: " << filename << std::endl;
+			for (int len = 0; len < size; ++len) {
+				prepareData(stream, chan, len, version);
 			}
-			stream << std::endl;
+			closeFile(stream, chan);
 		}
-	}
-	else {
-		for (int i = 0; i < size; ++i) {
-			stream << data->getMinSample(i) << ','
-				   << data->getMaxSample(i) << '\n';
+	} else {
+		openFile(stream, 0, filename);
+		output_stream << "Writing channel data to output file: " << filename << std::endl;
+		for (int len = 0; len < size; ++len) {
+			for (int chan = 0; chan < buffer_.getNumChannels(); ++chan) {
+				prepareData(stream, chan, len, version);
+			}
 		}
+		closeFile(stream);
 	}
+}
+
+void TxtFileExporter::prepareData(std::ofstream& stream, int chan, size_t len, FILE_VERSION version)
+{
+	short min = buffer_.getMinSample(len, chan);
+	short max = buffer_.getMaxSample(len, chan);
+	if (bits_ == 8) {
+		min /= 256;
+		max /= 256;
+	}
+	stream << min << ',' << max;
+	if (VERSION_2 == version) {
+		stream << ',' << chan;
+	}
+	stream << std::endl;
 }
 
 void TxtFileExporter::writeFooter(std::ofstream& stream)
 {
-	stream.flush();
-	stream.close();
+	// No footers required for text file.
 }

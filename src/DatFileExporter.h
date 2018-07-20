@@ -27,7 +27,8 @@
 class DatFileExporter: public FileExporter
 {
 	public:
-		DatFileExporter(const Options &options,
+		DatFileExporter(WaveformBuffer &buffer,
+		                const Options &options,
 						const boost::filesystem::path& output_filename);
 		~DatFileExporter() = default;
 		
@@ -37,20 +38,14 @@ class DatFileExporter: public FileExporter
 		DatFileExporter& operator=(const DatFileExporter &) = delete;
 
 	private:
-	    void writeHeader(std::ofstream& stream,
-		                 const std::uint32_t chan,
-                         const std::uint32_t num_chans,
-	                     const std::uint32_t size,
-	                     const std::uint32_t sample_rate_,
-	                     const std::uint32_t samples_per_pixel_);
-
-		void writeChannel(std::ostream &stream,
-		                  WaveformBuffer *data,
-		                  const std::uint32_t chan_num);
-
+	    void writeHeader(std::ofstream& stream);
+		void writeData(std::ofstream &stream);
 		void writeFooter(std::ofstream& stream);
-
-		size_t last_size_ = SIZE_MAX;
+		
+		void prepareHeader(std::ofstream& stream, FILE_VERSION version);
+		void prepareData(std::ofstream& stream, int chan, size_t len);
+		
+		int bits_;
 };
 
 #endif
