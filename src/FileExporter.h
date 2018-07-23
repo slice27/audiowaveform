@@ -23,9 +23,12 @@
 #define INC_FILE_EXPORTER_H
 
 #include <boost/filesystem.hpp>
+#include "Error.h"
 
 class WaveformBuffer;
 class Options;
+
+namespace fs = boost::filesystem;
 
 class FileExporter
 {
@@ -42,9 +45,9 @@ class FileExporter
 	protected:
 		FileExporter(WaveformBuffer& buffer,
 		             const Options &options,
-					 const boost::filesystem::path& output_filename);
+		             const fs::path& output_filename);
 
-		std::string getOutputFilename(const boost::filesystem::path& output_filename, 
+		std::string getOutputFilename(const fs::path& output_filename, 
                                       int chan_num);
 		
 		bool openFile(std::ofstream& stream, int chan, std::string& filename);
@@ -54,7 +57,7 @@ class FileExporter
 
 		WaveformBuffer &buffer_;
 		const Options &options_;
-		const boost::filesystem::path& output_filename_;
+		const fs::path& output_filename_;
 };
 
 #endif

@@ -34,110 +34,46 @@
 class WaveformBuffer
 {
     public:
+		static const uint32_t FLAG_8_BIT = 0x00000001U;
+	
 		typedef std::vector<short> vector_type;
         typedef vector_type::size_type size_type;
 
         WaveformBuffer();
-
-        WaveformBuffer(const WaveformBuffer& buffer) = delete;
+		WaveformBuffer(const WaveformBuffer& buffer);
         WaveformBuffer& operator=(const WaveformBuffer& buffer) = delete;
 
+		std::vector<WaveformBuffer> SplitChannels();
+
     public:
-        void setSampleRate(int sample_rate)
-        {
-            sample_rate_ = sample_rate;
-        }
-
-        void setSamplesPerPixel(int samples_per_pixel)
-        {
-            samples_per_pixel_ = samples_per_pixel;
-        }
-
-		int getNumChannels() const { return static_cast<int>(channels_.size()); }
+        void setSampleRate(int sample_rate);
+		int getSampleRate() const;
 		
-        int getSampleRate() const { return sample_rate_; }
-        int getSamplesPerPixel() const { return samples_per_pixel_; }
-
-        int getBits() const { return bits_; }
-
-        int getSize(int chan = 0) const { 
-			int ret = -1;
-			if (channels_.size() > static_cast<size_type>(chan)) {
-				ret = static_cast<int>(channels_[chan].size() / 2);
-			}
-			return ret;
-		}
-
-        void setSize(int size)
-        {
-			for (auto &d : channels_) {
-				d.resize(static_cast<size_type>(size * 2));
-			}
-        }
+        void setSamplesPerPixel(int samples_per_pixel);
+        int getSamplesPerPixel() const;
 		
-		bool channelSizesMatch() {
-			int size = getSize();
-			for (int i = 1; i < getNumChannels(); ++i) {
-				if (getSize(i) != size) {
-					return false;
-				}
-			}
-			return true;
-		}
+		void setBits(int bits);
+		int getBits() const;
 
-		vector_type& getData(int chan = 0) { return channels_[chan]; }
+        int32_t getSize(int chan = 0) const;
+        void setSize(int32_t size);
 
-        short getMinSample(size_type index, int chan = 0) const
-        {
-			if (channels_.size() > static_cast<size_type>(chan)) {
-				return channels_[chan][(2 * index)];
-			}
-			throw std::runtime_error("getMinSample: Channel does not exist.");
-        }
+        short getMinSample(size_type index, int chan = 0) const;
+        short getMaxSample(size_type index, int chan = 0) const;
+        void appendSamples(short min, short max, int chan = 0);
+        void setSamples(size_type index, short min, short max, int chan = 0);
 
-        short getMaxSample(size_type index, int chan = 0) const
-        {
-			if (channels_.size() > static_cast<size_type>(chan)) {
-				return channels_[chan][(2 * index) + 1];
-			}
-			throw std::runtime_error("getMaxSample: Channel does not exist.");
-        }
-
-        void appendSamples(short min, short max, int chan = 0)
-        {
-			appendChannels(chan);
-			channels_[chan].push_back(min);
-			channels_[chan].push_back(max);
-        }
-		
-
-        void setSamples(size_type index, short min, short max, int chan = 0)
-        {
-			appendChannels(chan);
-            channels_[chan][(2 * index)] = min;
-            channels_[chan][(2 * index) + 1] = max;
-        }
-
-        bool load(const char* filename);
-        bool saveAsText(const char* filename, int bits = 16) const;
+		int getNumChannels() const;
+		bool channelSizesMatch();
 
     private:
         int sample_rate_;
         int samples_per_pixel_;
         int bits_;
 
-
-		
 		std::vector<vector_type> channels_;
 		
-		void appendChannels(int chan) {
-			size_type chan_index = static_cast<size_type>(chan);
-			if (channels_.size() <= chan_index) {
-				while (channels_.size() <= chan_index) {
-					channels_.push_back(vector_type());
-				}
-			}
-		}
+		void appendChannels(int chan);
 };
 
 //------------------------------------------------------------------------------

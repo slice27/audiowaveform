@@ -34,45 +34,6 @@
 #include <sstream>
 #include <stdexcept>
 
-//------------------------------------------------------------------------------
-
-static int32_t readInt32(std::istream& stream)
-{
-    int32_t value;
-    stream.read(reinterpret_cast<char*>(&value), sizeof(value));
-
-    return value;
-}
-
-//------------------------------------------------------------------------------
-
-static uint32_t readUInt32(std::istream& stream)
-{
-    uint32_t value;
-    stream.read(reinterpret_cast<char*>(&value), sizeof(value));
-
-    return value;
-}
-
-//------------------------------------------------------------------------------
-
-static int16_t readInt16(std::istream& stream)
-{
-    int16_t value;
-    stream.read(reinterpret_cast<char*>(&value), sizeof(value));
-
-    return value;
-}
-
-//------------------------------------------------------------------------------
-
-static int8_t readInt8(std::istream& stream)
-{
-    int8_t value;
-    stream.read(reinterpret_cast<char*>(&value), sizeof(value));
-
-    return value;
-}
 
 //------------------------------------------------------------------------------
 
@@ -92,10 +53,6 @@ static void reportWriteError(const char* filename, const char* message)
 
 //------------------------------------------------------------------------------
 
-const uint32_t FLAG_8_BIT = 0x00000001U;
-
-//------------------------------------------------------------------------------
-
 WaveformBuffer::WaveformBuffer() :
     sample_rate_(0),
     samples_per_pixel_(0),
@@ -107,153 +64,164 @@ WaveformBuffer::WaveformBuffer() :
 
 //------------------------------------------------------------------------------
 
-bool WaveformBuffer::load(const char* filename)
+std::vector<WaveformBuffer> WaveformBuffer::SplitChannels()
 {
-    bool success = true;
-
-    std::ifstream file;
-    file.exceptions(std::ios::badbit | std::ios::failbit);
-
-    uint32_t size = 0;
-
-    try {
-        file.open(filename, std::ios::in | std::ios::binary);
-
-        output_stream << "Reading waveform data file: " << filename << std::endl;
-
-        const int32_t version = readInt32(file);
-
-        if (version != 1) {
-            reportReadError(
-                filename,
-                boost::str(boost::format("Cannot load data file version: %1%") % version).c_str()
-            );
-
-            return false;
-        }
-
-        const uint32_t flags = readUInt32(file);
-
-        sample_rate_       = readInt32(file);
-        samples_per_pixel_ = readInt32(file);
-
-        size = readUInt32(file);
-
-        if ((flags & FLAG_8_BIT) != 0) {
-            bits_ = 8;
-
-            for (uint32_t i = 0; i < size; ++i) {
-                int8_t min_value = readInt8(file);
-                channels_[0].push_back(static_cast<short>(
-				                       static_cast<int16_t>(min_value) * 256));
-
-                int8_t max_value = readInt8(file);
-                channels_[0].push_back(static_cast<short>(
-				                       static_cast<int16_t>(max_value) * 256));
-            }
-        }
-        else {
-            bits_ = 16;
-
-            for (uint32_t i = 0; i < size; ++i) {
-                int16_t min_value = readInt16(file);
-                channels_[0].push_back(min_value);
-
-                int16_t max_value = readInt16(file);
-                channels_[0].push_back(max_value);
-            }
-        }
-
-        output_stream << "Sample rate: " << sample_rate_ << " Hz"
-                      << "\nBits: " << bits_
-                      << "\nSamples per pixel: " << samples_per_pixel_
-                      << "\nLength: " << getSize() << " points" << std::endl;
-
-        if (samples_per_pixel_ < 2) {
-            reportReadError(
-                filename,
-                boost::str(
-                    boost::format("Invalid samples per pixel: %1%, minimum 2") % samples_per_pixel_
-                ).c_str()
-            );
-
-            success = false;
-        }
-        else if (sample_rate_ < 1) {
-            reportReadError(
-                filename,
-                boost::str(
-                    boost::format("Invalid sample rate: %1% Hz, minimum 1 Hz") % sample_rate_
-                ).c_str()
-            );
-
-            success = false;
-        }
-
-        file.clear();
-    }
-    catch (const std::exception& e) {
-
-        // Note: Catching std::exception instead of std::ios::failure is a
-        // workaround for a g++ v5 / v6 libstdc++ ABI bug.
-        //
-        // See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66145
-        // and http://stackoverflow.com/questions/38471518
-
-        if (!file.eof()) {
-            reportReadError(filename, strerror(errno));
-            success = false;
-        }
-    }
-
-    const int actual_size = getSize();
-
-    if (size != static_cast<uint32_t>(actual_size)) {
-        error_stream << "Expected " << size << " points, read "
-                     << actual_size << " min and max points\n";
-    }
-
-    return success;
+	std::vector<WaveformBuffer> ret;
+	for (int i = 0; i < getNumChannels(); ++i) {
+		WaveformBuffer b;
+		b.sample_rate_       = sample_rate_;
+		b.samples_per_pixel_ = samples_per_pixel_;
+		b.bits_              = bits_;
+		b.channels_.push_back(channels_[i]);
+		ret.push_back(b);
+	}
+	return ret;
 }
 
 //------------------------------------------------------------------------------
 
-bool WaveformBuffer::saveAsText(const char* filename, int bits) const
+void WaveformBuffer::setSampleRate(int sample_rate)
 {
-    bool success = true;
+	if (sample_rate < 1) {
+		throw std::runtime_error(
+		    "WaveformBuffer::setSampleRate: Invalid sample rate: " +
+			std::to_string(sample_rate) + " Hz, minimum 1 Hz");
+		return;
+	}
+	sample_rate_ = sample_rate;
+}
 
-    std::ofstream file;
-    file.exceptions(std::ios::badbit | std::ios::failbit);
-
-    try {
-        file.open(filename);
-
-        output_stream << "Writing output file: " << filename << std::endl;
-
-        const int size = getSize();
-
-        if (bits == 8) {
-            for (int i = 0; i < size; ++i) {
-                const int min_value = getMinSample(i) / 256;
-                const int max_value = getMaxSample(i) / 256;
-
-                file << min_value << ',' << max_value<< '\n';
-            }
-        }
-        else {
-            for (int i = 0; i < size; ++i) {
-                file << getMinSample(i) << ','
-                     << getMaxSample(i) << '\n';
-            }
-        }
-    }
-    catch (const std::exception&) {
-        reportWriteError(filename, strerror(errno));
-        success = false;
-    }
-
-    return success;
+int WaveformBuffer::getSampleRate() const
+{
+	return sample_rate_;
 }
 
 //------------------------------------------------------------------------------
 
+void WaveformBuffer::setSamplesPerPixel(int samples_per_pixel)
+{
+	if (samples_per_pixel < 2) {
+		throw std::runtime_error(
+		    "WaveformBuffer::setSamplesPerPixel: Invalid samples per pixel: " +
+			std::to_string(samples_per_pixel) + ", minimum 2");
+		return;
+	}
+	samples_per_pixel_ = samples_per_pixel;
+}
+
+int WaveformBuffer::getSamplesPerPixel() const
+{
+	return samples_per_pixel_;
+}
+
+//------------------------------------------------------------------------------
+
+void WaveformBuffer::setBits(int bits) {
+	if ((bits != 8) || (bits != 16)) {
+		throw std::runtime_error("setBits: Invalid bits: must be either 8 or 16");
+	} else {
+		bits_ = bits;
+	}
+}
+
+int WaveformBuffer::getBits() const
+{
+	return bits_;
+}
+
+//------------------------------------------------------------------------------
+
+void WaveformBuffer::setSize(int32_t size)
+{
+	for (auto &d : channels_) {
+		d.resize(static_cast<size_type>(size * 2));
+	}
+}
+
+int32_t WaveformBuffer::getSize(int chan) const { 
+	if (channels_.size() > static_cast<size_type>(chan)) {
+		return static_cast<int32_t>(channels_[chan].size() / 2);
+	} else {
+		throw std::runtime_error(
+		    "WaveformBuffer::getSize: channel " + std::to_string(chan) +
+			" is not allocated.");
+		return -1;
+	}
+}
+
+//------------------------------------------------------------------------------
+
+short WaveformBuffer::getMinSample(size_type index, int chan) const
+{
+	if (channels_.size() > static_cast<size_type>(chan)) {
+		return channels_[chan][(2 * index)];
+	}
+	throw std::runtime_error("WaveformBuffer::getMinSample: Channel " +
+	    std::to_string(chan) + " is not allocated.");
+}
+
+short WaveformBuffer::getMaxSample(size_type index, int chan) const
+{
+	if (channels_.size() > static_cast<size_type>(chan)) {
+		return channels_[chan][(2 * index) + 1];
+	}
+	throw std::runtime_error("WaveformBuffer::getMaxSample: Channel " +
+	    std::to_string(chan) + " is not allocated.");
+}
+
+//------------------------------------------------------------------------------
+
+void WaveformBuffer::appendSamples(short min, short max, int chan)
+{
+	appendChannels(chan);
+	channels_[chan].push_back(min);
+	channels_[chan].push_back(max);
+}
+
+
+void WaveformBuffer::setSamples(size_type index, short min, short max, int chan)
+{
+	appendChannels(chan);
+	channels_[chan][(2 * index)] = min;
+	channels_[chan][(2 * index) + 1] = max;
+}
+
+//------------------------------------------------------------------------------
+
+int WaveformBuffer::getNumChannels() const
+{
+	return static_cast<int>(channels_.size());
+}
+
+//------------------------------------------------------------------------------
+
+bool WaveformBuffer::channelSizesMatch() {
+	int32_t size = getSize();
+	for (int i = 1; i < getNumChannels(); ++i) {
+		if (getSize(i) != size) {
+			return false;
+		}
+	}
+	return true;
+}
+
+//------------------------------------------------------------------------------
+
+WaveformBuffer::WaveformBuffer(const WaveformBuffer& buffer)
+{
+	sample_rate_       = buffer.sample_rate_;
+	samples_per_pixel_ = buffer.samples_per_pixel_;
+	bits_              = buffer.bits_;
+	channels_          = buffer.channels_;
+}
+
+//------------------------------------------------------------------------------
+
+void WaveformBuffer::appendChannels(int chan) {
+	size_type chan_index = static_cast<size_type>(chan);
+	if (channels_.size() <= chan_index) {
+		while (channels_.size() <= chan_index) {
+			channels_.push_back(vector_type());
+		}
+	}
+}

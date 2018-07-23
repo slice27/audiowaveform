@@ -24,6 +24,7 @@
 #include "Error.h"
 
 #include <stdexcept>
+#include <sstream>
 
 //------------------------------------------------------------------------------
 
@@ -32,4 +33,19 @@ void throwError(boost::format& message)
     throw std::runtime_error(message.str());
 }
 
+
+
+void throwError(const std::string& method,
+                const std::string& message,
+                const std::string& filename)
+{
+	std::stringstream ss;
+	ss << method << ": " << message;
+	if (!filename.empty()) {
+		ss << " in file: " << filename;
+	}
+	ss << std::endl;
+	throw std::runtime_error(ss.str());
+}
+							   
 //------------------------------------------------------------------------------

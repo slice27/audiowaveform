@@ -241,10 +241,13 @@ set(MODULES
     src/WaveformRescaler.cpp
     src/WavFileWriter.cpp
     src/madlld-1.1p1/bstdfile.c
-	src/FileExporter.cpp
-	src/JsonFileExporter.cpp
-	src/DatFileExporter.cpp
-	src/TxtFileExporter.cpp
+    src/FileExporter.cpp
+    src/JsonFileExporter.cpp
+    src/DatFileExporter.cpp
+    src/TxtFileExporter.cpp
+    src/PngFileExporter.cpp
+    src/FileImporter.cpp
+    src/DatFileImporter.cpp
 )
 
 set(SRCS

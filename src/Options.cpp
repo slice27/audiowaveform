@@ -242,11 +242,13 @@ void Options::handleAmplitudeScaleOption(const std::string& option_value)
                 amplitude_scale_ = result.second;
             }
             else {
-                throwError("Invalid amplitude scale: must be a positive number");
+                throwError("Options::handleAmplitudeScaleOption",
+				           "Invalid amplitude scale: must be a positive number");
             }
         }
         else {
-            throwError("Invalid amplitude scale: must be a number");
+            throwError("Options::handleAmplitudeScaleOption",
+			           "Invalid amplitude scale: must be a number");
         }
     }
 }
@@ -263,10 +265,12 @@ void Options::handleZoomOption(const std::string& option_value)
             samples_per_pixel_ = std::stoi(option_value);
         }
         catch (std::invalid_argument& e) {
-            throwError("Invalid zoom: must be a number or 'auto'");
+            throwError("Options::handleZoomOption",
+			           "Invalid zoom: must be a number or 'auto'");
         }
         catch (std::out_of_range& e) {
-            throwError("Invalid zoom: number too large");
+            throwError("Options::handleZoomOption",
+			           "Invalid zoom: number too large");
         }
     }
 }

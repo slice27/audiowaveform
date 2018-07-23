@@ -25,33 +25,27 @@
 #include "Streams.h"
 #include "Utils.h"
 
-namespace fs = boost::filesystem;
-
 FileExporter::FileExporter(WaveformBuffer &buffer,
                            const Options &options,
-                           const boost::filesystem::path& output_filename) :
+                           const fs::path& output_filename) :
 		    buffer_(buffer),
 		    options_(options),
 			output_filename_(output_filename)
 {
-	
 }
-			
+
 bool FileExporter::ExportToFile()
 {
-	bool ret = true;
 	try {
 		int bits = options_.getBits();
 		if (bits != 8 && bits != 16) {
-			throw std::runtime_error("Invalid bits: must be either 8 or 16");
-			return false;
+			throwError("FileExporter::ExportToFile", "Invalid bits: must be either 8 or 16");
 		}
 		
 		FILE_VERSION version = static_cast<FILE_VERSION>(options_.getFileVersion());
 		if ((FileExporter::VERSION_1 != version) || (FileExporter::VERSION_2 != version)) {
-			throw std::runtime_error("FileExporter::ExportToFile: Unknown file version.  Version: " + 
-			                         std::to_string(version) + " - Version must be either 1 or 2");
-			return false;
+			throwError("FileExporter::ExportToFile", "Unknown file version.  Version: " + 
+			           std::to_string(version) + " - Version must be either 1 or 2.");
 		}
 
 		std::ofstream file;
@@ -60,13 +54,12 @@ bool FileExporter::ExportToFile()
 		writeFile(file);
 		
 	} catch (const std::exception& e) {
-		error_stream << e.what() << std::endl;
-		ret = false;
+		throw;
 	}
-	return ret;
+	return true;
 }
 
-std::string FileExporter::getOutputFilename(const boost::filesystem::path& output_filename, 
+std::string FileExporter::getOutputFilename(const fs::path& output_filename, 
                                             int chan_num) {
 	fs::path fn = output_filename;
 	if (!options_.getMono() && (options_.getFileVersion() == VERSION_1)) {
@@ -88,8 +81,7 @@ bool FileExporter::openFile(std::ofstream& stream, int chan, std::string& filena
 		filename = getOutputFilename(output_filename_, chan);
 		stream.open(filename);
 	} catch (std::exception &e) {
-		error_stream << "Unable to open file: " + filename + " - " + e.what() << std::endl;
-		return false;
+		throwError("FileExporter::openFile", e.what(), filename);
 	}
 	return true;
 }

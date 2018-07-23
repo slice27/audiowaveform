@@ -19,32 +19,34 @@
 // You should have received a copy of the GNU General Public License along with
 // Audio Waveform Image Generator.  If not, see <http://www.gnu.org/licenses/>.
 
-#if !defined(INC_JSON_FILE_EXPORTER_H)
-#define INC_JSON_FILE_EXPORTER_H
+#if !defined(INC_FILE_IMPORTER_H)
+#define INC_FILE_IMPORTER_H
 
+#include <boost/filesystem.hpp>
 #include "FileExporter.h"
 
-class JsonFileExporter: public FileExporter
+namespace fs = boost::filesystem;
+
+class FileImporter
 {
 	public:
-		JsonFileExporter(WaveformBuffer &buffer,
-		                 const Options &options,
-						 const fs::path& output_filename);
-		~JsonFileExporter() = default;
+		~FileImporter() = default;
 		
-		JsonFileExporter() = delete;
-		JsonFileExporter(JsonFileExporter &&) = delete;
-		JsonFileExporter(const JsonFileExporter &) = delete;
-		JsonFileExporter& operator=(const JsonFileExporter &) = delete;
-
-	private:
-	    void writeFile(std::ofstream& stream);
+		bool ImportFromFile();
 		
-		void writeHeader(std::ofstream& stream, int chan, FILE_VERSION version);
-		void writeData(std::ofstream& stream, int chan,
-		               FILE_VERSION version, std::string filename);
-		void writeFooter(std::ofstream& stream);
+	protected:
+		FileImporter(WaveformBuffer &buffer,
+		             const Options &options,
+		             const fs::path& input_filename);
 
+		virtual void readFile(std::ifstream& stream) = 0;
+
+		bool openFile(std::ifstream& stream);
+		void closeFile(std::ifstream& stream);
+
+		WaveformBuffer& buffer_;
+		const Options& options_;
+		const fs::path& input_filename_;
 };
 
 #endif

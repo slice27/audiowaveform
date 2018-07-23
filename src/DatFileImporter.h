@@ -19,32 +19,34 @@
 // You should have received a copy of the GNU General Public License along with
 // Audio Waveform Image Generator.  If not, see <http://www.gnu.org/licenses/>.
 
-#if !defined(INC_JSON_FILE_EXPORTER_H)
-#define INC_JSON_FILE_EXPORTER_H
+#if !defined(INC_DAT_FILE_IMPORTER_H)
+#define INC_DAT_FILE_IMPORTER_H
 
+#include "FileImporter.h"
 #include "FileExporter.h"
 
-class JsonFileExporter: public FileExporter
+class DatFileImporter: public FileImporter
 {
 	public:
-		JsonFileExporter(WaveformBuffer &buffer,
-		                 const Options &options,
-						 const fs::path& output_filename);
-		~JsonFileExporter() = default;
+		DatFileImporter(WaveformBuffer &buffer,
+		                const Options &options,
+		                const fs::path& input_filename);
+		~DatFileImporter() = default;
 		
-		JsonFileExporter() = delete;
-		JsonFileExporter(JsonFileExporter &&) = delete;
-		JsonFileExporter(const JsonFileExporter &) = delete;
-		JsonFileExporter& operator=(const JsonFileExporter &) = delete;
+		DatFileImporter() = delete;
+		DatFileImporter(DatFileImporter &&) = delete;
+		DatFileImporter(const DatFileImporter &) = delete;
+		DatFileImporter& operator=(const DatFileImporter &) = delete;
 
 	private:
-	    void writeFile(std::ofstream& stream);
-		
-		void writeHeader(std::ofstream& stream, int chan, FILE_VERSION version);
-		void writeData(std::ofstream& stream, int chan,
-		               FILE_VERSION version, std::string filename);
-		void writeFooter(std::ofstream& stream);
+		void readFile(std::ifstream& stream);
 
+		void readHeader(std::ifstream& stream);
+		void readData(std::ifstream& stream);
+
+		FileExporter::FILE_VERSION version_;
+		uint32_t channels_;
+		int32_t size_;
 };
 
 #endif

@@ -68,6 +68,7 @@ class Options
         int getPixelsPerSecond() const { return pixels_per_second_; }
         bool hasPixelsPerSecond() const { return has_pixels_per_second_; }
 
+		void setBits(int bits) { bits_ = bits; }
         int getBits() const { return bits_; }
         bool hasBits() const { return has_bits_; }
         int getImageWidth() const { return image_width_; }
@@ -96,6 +97,7 @@ class Options
         bool getVersion() const { return version_; }
 
 		bool getMono() const { return mono_; }
+		void setFileVersion(int version) { file_version_ = version; }
 		int getFileVersion() const { return file_version_; }
 
         void showUsage(std::ostream& stream) const;

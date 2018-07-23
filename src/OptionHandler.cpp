@@ -25,27 +25,24 @@
 #include "Config.h"
 
 #include "DurationCalculator.h"
-#include "GdImageRenderer.h"
 #include "Mp3AudioFileReader.h"
 #include "Options.h"
 #include "SndFileAudioFileReader.h"
 #include "Streams.h"
 #include "WaveformBuffer.h"
-#include "WaveformColors.h"
 #include "WaveformGenerator.h"
-#include "WaveformRescaler.h"
 #include "WavFileWriter.h"
 #include "JsonFileExporter.h"
 #include "DatFileExporter.h"
 #include "TxtFileExporter.h"
+#include "PngFileExporter.h"
+#include "DatFileImporter.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 
 #include <cassert>
 #include <string>
-
-namespace fs = boost::filesystem;
 
 //------------------------------------------------------------------------------
 
@@ -225,70 +222,29 @@ bool OptionHandler::convertWaveformData(
 {
 	bool success = true;
 	WaveformBuffer buffer;
+	const fs::path input_file_ext = input_filename.extension();
+	if (input_file_ext == ".dat") {
+		DatFileImporter dat(buffer, options, input_filename);
+		success = dat.ImportFromFile();
+	}
 
-	/* TODO: Rewrite all this:
-    if (!buffers[0]->load(input_filename.string().c_str())) {
-        return false;
-    }
-
-    const int bits = options.hasBits() ? options.getBits() : buffers[0]->getBits();
-
-    
-
+	if (!options.hasBits()) {
+		const_cast<Options&>(options).setBits(buffer.getBits());
+	}
     const fs::path output_file_ext = output_filename.extension();
 
-    if (output_file_ext == ".json") {
-		JsonFileExporter json(options, output_filename);
-		success = json.ExportToFile(buffers);
-    }
-    else if (output_file_ext == ".txt") {
-		TxtFileExporter txt(options, output_filename);
-		success = txt.ExportToFile(buffers);
-    }
-	*/
-    return success;
+	if (output_file_ext == ".json") {
+		JsonFileExporter json(buffer, options, output_filename);
+		success = json.ExportToFile();
+	}
+	else if (output_file_ext == ".txt") {
+		TxtFileExporter txt(buffer, options, output_filename);
+		success = txt.ExportToFile();
+	}
+	return success;
 }
 
-//------------------------------------------------------------------------------
 
-static WaveformColors createWaveformColors(const Options& options)
-{
-    WaveformColors colors;
-
-    const std::string& color_scheme = options.getColorScheme();
-
-    if (color_scheme == "audacity") {
-        colors = audacity_waveform_colors;
-    }
-    else if (color_scheme == "audition") {
-        colors = audition_waveform_colors;
-    }
-    else {
-        std::string message = boost::str(
-            boost::format("Unknown color scheme: %1%") % color_scheme
-        );
-
-        throw std::runtime_error(message);
-    }
-
-    if (options.hasBorderColor()) {
-        colors.border_color = options.getBorderColor();
-    }
-
-    if (options.hasBackgroundColor()) {
-        colors.background_color = options.getBackgroundColor();
-    }
-
-    if (options.hasWaveformColor()) {
-        colors.waveform_color = options.getWaveformColor();
-    }
-
-    if (options.hasAxisLabelColor()) {
-        colors.axis_label_color = options.getAxisLabelColor();
-    }
-
-    return colors;
-}
 
 //------------------------------------------------------------------------------
 
@@ -297,37 +253,31 @@ bool OptionHandler::renderWaveformImage(
     const fs::path& output_filename,
     const Options& options)
 {
-	/* TODO: Rewrite this
+	bool ret = true;
     std::unique_ptr<ScaleFactor> scale_factor;
-
+	
     const bool calculate_duration = options.isAutoSamplesPerPixel();
-
     if (!calculate_duration) {
         scale_factor = createScaleFactor(options);
     }
 
     int output_samples_per_pixel = 0;
-
-	std::vector<std::unique_ptr<WaveformBuffer>> input_buffers;
+	WaveformBuffer buffer;
     
     const fs::path input_file_ext = input_filename.extension();
 
     if (input_file_ext == ".dat") {
-		input_buffers.push_back(std::make_unique<WaveformBuffer>());
-        if (!input_buffers[0]->load(input_filename.string().c_str())) {
-            return false;
-        }
-
+		DatFileImporter dat(buffer, options, input_filename);
+		ret = dat.ImportFromFile();
         if (calculate_duration) {
-            const double duration = getDuration(*input_buffers[0]);
-
+            const double duration = getDuration(buffer);
             scale_factor.reset(
                 new DurationScaleFactor(0.0, duration, options.getImageWidth())
             );
         }
 
         output_samples_per_pixel = scale_factor->getSamplesPerPixel(
-            input_buffers[0]->getSampleRate()
+            buffer.getSampleRate()
         );
     }
     else {
@@ -351,79 +301,18 @@ bool OptionHandler::renderWaveformImage(
             );
         }
 
-        WaveformGenerator processor(input_buffers, *scale_factor, options.getMono());
+        WaveformGenerator processor(buffer, *scale_factor, options.getMono());
 
         if (!audio_file_reader->run(processor)) {
             return false;
         }
 
-        output_samples_per_pixel = input_buffers[0]->getSamplesPerPixel();
+        output_samples_per_pixel = buffer.getSamplesPerPixel();
     }
 
-	int channel = 0;
-	
-	
-	bool ret = true;
-	std::for_each(input_buffers.begin(), input_buffers.end(), [&](auto &b) {
-		int chan = channel++;
-		WaveformBuffer output_buffer;
-		// Assume no rescale is required, and default render_buffer to channel buffer.
-		WaveformBuffer* render_buffer = b.get();
-		const int input_samples_per_pixel = render_buffer->getSamplesPerPixel();
-
-		
-		if (output_samples_per_pixel > input_samples_per_pixel) {
-			// Need to rescale.  Use the render_buffer and rescale into output_buffer.
-			WaveformRescaler rescaler;
-
-			if (!rescaler.rescale(
-			    *render_buffer,
-			    output_buffer,
-			    output_samples_per_pixel))
-			{
-				return (ret &= false);
-			}
-			// Render from the now rescaled output_buffer.
-			render_buffer = &output_buffer;
-		}
-		else if (output_samples_per_pixel < input_samples_per_pixel) {
-			// Can't rescale.  Not enough resolution on input.
-			error_stream << "Invalid zoom, minimum: " << input_samples_per_pixel << '\n';
-			return (ret &= false);
-		}
-
-		const WaveformColors colors = createWaveformColors(options);
-
-		GdImageRenderer renderer;
-
-		std::string filename = "";//getOutputFilename(output_filename, chan, options);
-		
-		output_stream << "Saving to file: " << filename << std::endl;
-		if (!renderer.create(
-			                 *render_buffer,
-			                 options.getStartTime(),
-			                 options.getImageWidth(),
-			                 options.getImageHeight(),
-			                 colors,
-			                 options.getRenderAxisLabels(),
-			                 options.isAutoAmplitudeScale(),
-			                 options.getAmplitudeScale()))
-		{
-			error_stream << "Unable to render PNG: " << filename << '\n';
-			return (ret &= false);
-		}
-		if (!renderer.saveAsPng(filename.c_str(),
-		                        options.getPngCompressionLevel()
-		)) {
-			error_stream << "Unable to save PNG: " << filename << '\n';
-			return (ret &= false);
-		}
-		return true;
-	});
-	
+	PngFileExporter png(buffer, options, output_filename, output_samples_per_pixel);
+	ret = png.ExportToFile();
 	return ret;
-	*/
-	return false;
 }
 
 //------------------------------------------------------------------------------

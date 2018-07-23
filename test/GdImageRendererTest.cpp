@@ -40,6 +40,8 @@ using testing::StartsWith;
 using testing::StrEq;
 using testing::Test;
 
+namespace fs = boost::filesystem;
+
 //------------------------------------------------------------------------------
 
 class GdImageRendererTest : public Test
@@ -60,7 +62,7 @@ class GdImageRendererTest : public Test
 
 static void testImageRendering(bool axis_labels, const std::string& expected_output)
 {
-    const boost::filesystem::path filename = FileUtil::getTempFilename(".png");
+    const fs::path filename = FileUtil::getTempFilename(".png");
 
     // Ensure temporary file is deleted at end of test.
     FileDeleter deleter(filename);
@@ -80,7 +82,7 @@ static void testImageRendering(bool axis_labels, const std::string& expected_out
 
     // Check file was created.
     boost::system::error_code error_code;
-    boost::uintmax_t size = boost::filesystem::file_size(filename, error_code);
+    boost::uintmax_t size = fs::file_size(filename, error_code);
 
     ASSERT_THAT(error_code, Eq(boost::system::errc::success));
     ASSERT_THAT(size, Gt(0U));

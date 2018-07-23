@@ -29,7 +29,7 @@ class DatFileExporter: public FileExporter
 	public:
 		DatFileExporter(WaveformBuffer &buffer,
 		                const Options &options,
-						const boost::filesystem::path& output_filename);
+						const fs::path& output_filename);
 		~DatFileExporter() = default;
 		
 		DatFileExporter() = delete;

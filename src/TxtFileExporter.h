@@ -29,7 +29,7 @@ class TxtFileExporter: public FileExporter
 	public:
 		TxtFileExporter(WaveformBuffer &buffer,
 		                const Options &options,
-						const boost::filesystem::path& output_filename);
+						const fs::path& output_filename);
 		~TxtFileExporter() = default;
 		
 		TxtFileExporter() = delete;

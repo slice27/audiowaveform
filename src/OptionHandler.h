@@ -28,6 +28,8 @@
 
 #include <boost/filesystem.hpp>
 
+namespace fs = boost::filesystem;
+
 //------------------------------------------------------------------------------
 
 class Options;
@@ -47,29 +49,29 @@ class OptionHandler
 
     private:
         bool convertAudioFormat(
-            const boost::filesystem::path& input_filename,
-            const boost::filesystem::path& output_filename
+            const fs::path& input_filename,
+            const fs::path& output_filename
         );
 
         bool generateWaveformData(
-            const boost::filesystem::path& input_filename,
-            const boost::filesystem::path& output_filename,
+            const fs::path& input_filename,
+            const fs::path& output_filename,
             const Options& options
         );
 
         bool convertWaveformData(
-            const boost::filesystem::path& input_filename,
-            const boost::filesystem::path& output_filename,
+            const fs::path& input_filename,
+            const fs::path& output_filename,
             const Options& options
         );
 
         bool renderWaveformImage(
-            const boost::filesystem::path& input_filename,
-            const boost::filesystem::path& output_filename,
+            const fs::path& input_filename,
+            const fs::path& output_filename,
             const Options& options
         );
 
-		std::string getOutputFilename(const boost::filesystem::path& output_filename, 
+		std::string getOutputFilename(const fs::path& output_filename, 
 		                              int chan_num, const Options& options);
 };
 

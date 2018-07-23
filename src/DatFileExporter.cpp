@@ -25,8 +25,6 @@
 #include "Options.h"
 #include "Utils.h"
 
-const uint32_t FLAG_8_BIT = 0x00000001U;
-
 /*******************************************************************************
 *
 * If a version 1 export is requested, this should behave as expected.  If a 
@@ -76,7 +74,7 @@ static void writeInt16(std::ostream& stream, int16_t value) {
 
 DatFileExporter::DatFileExporter(WaveformBuffer &buffer,
                                  const Options &options,
-                                 const boost::filesystem::path& output_filename):
+                                 const fs::path& output_filename):
 	FileExporter(buffer, options, output_filename),
 	bits_(options.getBits())
 {
@@ -87,8 +85,7 @@ DatFileExporter::DatFileExporter(WaveformBuffer &buffer,
 void DatFileExporter::writeFile(std::ofstream& stream)
 {
 	if (!buffer_.channelSizesMatch()) {
-		throw std::runtime_error("DatFileExporter::writeFile: channel sizes do not match.");
-		return;
+		throwError("DatFileExporter::writeFile", "channel sizes do not match.");
 	}
 	
 	std::string filename;
@@ -125,9 +122,8 @@ void DatFileExporter::writeFile(std::ofstream& stream)
 			}
 		} break;
 		default:
-			throw std::runtime_error("DatFileExporter::writeFile: unknown file version " + 
-			                         std::to_string(version));
-			break;
+			throwError("DatFileExporter::writeFile",
+			           "unknown file version " + std::to_string(version));
 	}
 }
 
@@ -136,7 +132,8 @@ void DatFileExporter::writeFile(std::ofstream& stream)
 void DatFileExporter::writeHeader(std::ofstream& stream, FILE_VERSION version)
 {
 	writeInt32(stream, static_cast<std::int32_t>(version));
-	writeUInt32(stream, static_cast<std::uint32_t>((bits_ == 8) ? FLAG_8_BIT : 0));
+	writeUInt32(stream, static_cast<std::uint32_t>(
+	    (bits_ == 8) ? WaveformBuffer::FLAG_8_BIT : 0));
 	writeUInt32(stream, buffer_.getSampleRate());
     writeUInt32(stream, buffer_.getSamplesPerPixel());
     writeUInt32(stream, static_cast<uint32_t>(buffer_.getSize()));
