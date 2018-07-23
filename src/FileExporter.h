@@ -22,8 +22,6 @@
 #if !defined(INC_FILE_EXPORTER_H)
 #define INC_FILE_EXPORTER_H
 
-#include <vector>
-#include <memory>
 #include <boost/filesystem.hpp>
 
 class WaveformBuffer;
@@ -45,18 +43,14 @@ class FileExporter
 		FileExporter(WaveformBuffer& buffer,
 		             const Options &options,
 					 const boost::filesystem::path& output_filename);
-			
-		bool needNewFile();
+
 		std::string getOutputFilename(const boost::filesystem::path& output_filename, 
                                       int chan_num);
 		
 		bool openFile(std::ofstream& stream, int chan, std::string& filename);
-		void closeFile(std::ofstream& stream, int chan);
 		void closeFile(std::ofstream& stream);
 		
-		virtual void writeHeader(std::ofstream& stream) = 0;
-		virtual void writeData(std::ofstream &stream) = 0;
-		virtual void writeFooter(std::ofstream& stream) = 0;
+		virtual void writeFile(std::ofstream& stream) = 0;
 
 		WaveformBuffer &buffer_;
 		const Options &options_;

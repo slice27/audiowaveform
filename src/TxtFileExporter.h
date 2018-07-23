@@ -38,11 +38,9 @@ class TxtFileExporter: public FileExporter
 		TxtFileExporter& operator=(const TxtFileExporter &) = delete;
 
 	private:
-	    void writeHeader(std::ofstream& stream);
-		void writeData(std::ofstream &stream);
-		void writeFooter(std::ofstream& stream);
+	    void writeFile(std::ofstream& stream);
 
-		void prepareData(std::ofstream& stream, int chan, size_t len, FILE_VERSION version);
+		void writeData(std::ofstream& stream, int chan, size_t len, FILE_VERSION version);
 		int bits_;
 };
 

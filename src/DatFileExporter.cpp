@@ -84,26 +84,56 @@ DatFileExporter::DatFileExporter(WaveformBuffer &buffer,
 
 //------------------------------------------------------------------------------
 
-void DatFileExporter::writeHeader(std::ofstream& stream)
+void DatFileExporter::writeFile(std::ofstream& stream)
 {
 	if (!buffer_.channelSizesMatch()) {
-		throw std::runtime_error("DatFileExporter::writeHeader: channel sizes do not match.");
+		throw std::runtime_error("DatFileExporter::writeFile: channel sizes do not match.");
 		return;
 	}
+	
+	std::string filename;
 	FILE_VERSION version = static_cast<FILE_VERSION>(options_.getFileVersion());
-	// Create all the headers for all the required files.
-	for (int i = 0; i < buffer_.getNumChannels(); ++i) {
-		// Write a header for the first file, or if a new file needs to be written for stereo version 1 files.
-		std::string filename;
-		if (openFile(stream, i, filename)) {
-			output_stream << "Writing header to output file: " << filename << std::endl;
-			prepareHeader(stream, version);
-			closeFile(stream, i);
-		}
+	WaveformBuffer::size_type size = buffer_.getSize();
+	switch (version) {
+		case FileExporter::VERSION_1: {
+			// Write a dat file for each channel separately.
+			for (int chan = 0; chan < buffer_.getNumChannels(); ++chan) {
+				if (openFile(stream, chan, filename)) {
+					output_stream << "Writing header to output file: " << filename << std::endl;
+					writeHeader(stream, version);
+					output_stream << "Writing channel " << std::to_string(chan) 
+					              << " to output file: " << filename << std::endl;
+					for (WaveformBuffer::size_type len = 0; len < size; ++len) {
+						writeData(stream, chan, version);
+					}
+					closeFile(stream);
+				}
+			}
+		} break;
+		case FileExporter::VERSION_2: {
+			// Write one dat file with each channel interleaved.
+			if (openFile(stream, 0, filename)) {
+				output_stream << "Writing header to output file: " << filename << std::endl;
+				writeHeader(stream, version);
+				output_stream << "Writing channel data to output file: " << filename << std::endl;
+				for (WaveformBuffer::size_type len = 0; len < size; ++len) {
+					for (int chan = 0; chan < buffer_.getNumChannels(); ++chan) {
+						writeData(stream, chan, len);
+					}
+				}
+				closeFile(stream);
+			}
+		} break;
+		default:
+			throw std::runtime_error("DatFileExporter::writeFile: unknown file version " + 
+			                         std::to_string(version));
+			break;
 	}
 }
 
-void DatFileExporter::prepareHeader(std::ofstream& stream, FILE_VERSION version)
+//------------------------------------------------------------------------------
+
+void DatFileExporter::writeHeader(std::ofstream& stream, FILE_VERSION version)
 {
 	writeInt32(stream, static_cast<std::int32_t>(version));
 	writeUInt32(stream, static_cast<std::uint32_t>((bits_ == 8) ? FLAG_8_BIT : 0));
@@ -117,33 +147,7 @@ void DatFileExporter::prepareHeader(std::ofstream& stream, FILE_VERSION version)
 
 //------------------------------------------------------------------------------
 
-void DatFileExporter::writeData(std::ofstream &stream)
-{
-	std::string filename;
-	WaveformBuffer::size_type size = buffer_.getSize();
-	if (needNewFile()) {
-		// Write a dat file for each channel separately.
-		for (int chan = 0; chan < buffer_.getNumChannels(); ++chan) {
-			openFile(stream, chan, filename);
-			output_stream << "Writing channel " << std::to_string(chan) << " to output file: " << filename << std::endl;
-			for (WaveformBuffer::size_type len = 0; len < size; ++len) {
-				prepareData(stream, chan, len);
-			}
-			closeFile(stream, chan);
-		}
-	} else {
-		openFile(stream, 0, filename);
-		output_stream << "Writing channel data to output file: " << filename << std::endl;
-		for (WaveformBuffer::size_type len = 0; len < size; ++len) {
-			for (int chan = 0; chan < buffer_.getNumChannels(); ++chan) {
-				prepareData(stream, chan, len);
-			}
-		}
-		closeFile(stream);
-	}
-}
-
-void DatFileExporter::prepareData(std::ofstream& stream, int chan, size_t len)
+void DatFileExporter::writeData(std::ofstream& stream, int chan, size_t len)
 {
 	short min = buffer_.getMinSample(len, chan);
 	short max = buffer_.getMaxSample(len, chan);
@@ -158,9 +162,3 @@ void DatFileExporter::prepareData(std::ofstream& stream, int chan, size_t len)
 }
 
 //------------------------------------------------------------------------------
-
-void DatFileExporter::writeFooter(std::ofstream& stream)
-{
-	UNUSED(stream);
-	// Files are closed in writeData.  No footer required.
-}

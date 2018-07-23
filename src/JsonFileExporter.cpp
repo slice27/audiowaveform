@@ -33,22 +33,49 @@ JsonFileExporter::JsonFileExporter(WaveformBuffer& buffer,
 
 //------------------------------------------------------------------------------
 
-void JsonFileExporter::writeHeader(std::ofstream& stream)
+void JsonFileExporter::writeFile(std::ofstream& stream)
 {
 	FILE_VERSION version = static_cast<FILE_VERSION>(options_.getFileVersion());
-	// Create all the headers for all the required files.
-	for (int i = 0; i < buffer_.getNumChannels(); ++i) {
-		// Write a header for the first file, or if a new file needs to be written for stereo version 1 files.
-		std::string filename;
-		if (openFile(stream, i, filename)) {
-			output_stream << "Writing header to output file: " << filename << std::endl;
-			prepareHeader(stream, i, version);
-			closeFile(stream, i);
-		}
+	std::string filename;
+	switch (version) {
+		case FileExporter::VERSION_1: {
+			for (int chan = 0; chan < buffer_.getNumChannels(); ++chan) {
+				if (openFile(stream, chan, filename)) {
+					output_stream << "Writing header to output file: " << filename << std::endl;
+					writeHeader(stream, chan, version);
+					output_stream << "Writing channel " << std::to_string(chan) 
+					              << " to output file: " << filename << std::endl;
+					writeData(stream, chan, version);
+					output_stream << "Writing footer to output file: " << filename << std::endl;
+					writeFooter(stream);
+					closeFile(stream);
+				}
+			}
+		} break;
+		case FileExporter::VERSION_2: {
+			if (openFile(stream, 0, filename)) {
+				output_stream << "Writing header to output file: " << filename << std::endl;
+				writeHeader(stream, 0, version);
+				for (int chan = 0; chan < buffer_.getNumChannels(); ++chan) {
+					output_stream << "Writing channel " << std::to_string(chan) 
+					              << " to output file: " << filename << std::endl;
+					writeData(stream, chan, version);
+				}
+				output_stream << "Writing footer to output file: " << filename << std::endl;
+				writeFooter(stream);
+				closeFile(stream);
+			}
+		} break;
+		default: 
+			throw std::runtime_error("JsonFileExporter::writeFile: unknown file version " + 
+			                         std::to_string(version));
+			break;
 	}
 }
 
-void JsonFileExporter::prepareHeader(std::ofstream& stream, int chan, FILE_VERSION version)
+//------------------------------------------------------------------------------
+
+void JsonFileExporter::writeHeader(std::ofstream& stream, int chan, FILE_VERSION version)
 {
 	stream << "{" << std::endl << "\t\"sample_rate\":" << buffer_.getSampleRate() << ',' << std::endl
 		   << "\t\"samples_per_pixel\":" << buffer_.getSamplesPerPixel() << ',' << std::endl
@@ -58,20 +85,7 @@ void JsonFileExporter::prepareHeader(std::ofstream& stream, int chan, FILE_VERSI
 		   << "\t\"version\":" << version << ',' << std::endl;
 }
 
-void JsonFileExporter::writeData(std::ofstream &stream)
-{
-	FILE_VERSION version = static_cast<FILE_VERSION>(options_.getFileVersion());
-	std::string filename;
-	for (int i = 0; i < buffer_.getNumChannels(); ++i) {
-		openFile(stream, i, filename);
-		output_stream << "Writing channel " << std::to_string(i) << " to output file: " << filename << std::endl;
-		prepareData(stream, i, version);
-		closeFile(stream, i);
-	}
-	closeFile(stream); // Must close the stream so that the header can be written in version 2 files.
-}
-
-void JsonFileExporter::prepareData(std::ofstream& stream, int chan, FILE_VERSION version)
+void JsonFileExporter::writeData(std::ofstream& stream, int chan, FILE_VERSION version)
 {
 	int divisor = ((buffer_.getBits() == 8) ? 256 : 1);
 	if (buffer_.getNumChannels() > chan) {
@@ -79,7 +93,7 @@ void JsonFileExporter::prepareData(std::ofstream& stream, int chan, FILE_VERSION
 			case FileExporter::VERSION_1: stream << "\t\"data\":[" << std::endl; break;
 			case FileExporter::VERSION_2: stream << "\t\"chan" << chan << "\":[" << std::endl; break;
 			default:
-				throw std::runtime_error("JsonFileExporter::prepareData: unknown file version " + std::to_string(version));
+				throw std::runtime_error("JsonFileExporter::writeData: unknown file version " + std::to_string(version));
 				return;
 		}
 		int chanBufferSize = buffer_.getSize(chan);
@@ -94,22 +108,10 @@ void JsonFileExporter::prepareData(std::ofstream& stream, int chan, FILE_VERSION
 		stream << std::endl << "\t]" << std::endl;
 		return;
 	}
-	throw std::runtime_error("JsonFileExporter::prepareData: Channel " + std::to_string(chan) + "does not exist.");
+	throw std::runtime_error("JsonFileExporter::writeData: Channel " + std::to_string(chan) + "does not exist.");
 }
 
-void JsonFileExporter::writeFooter(std::ofstream &stream)
-{
-	FILE_VERSION version = static_cast<FILE_VERSION>(options_.getFileVersion());
-	for (int i = 0; i < buffer_.getNumChannels(); ++i) {
-		std::string filename;
-		if (openFile(stream, i, filename)) {
-			output_stream << "Writing footer to output file: " << filename << std::endl;
-			prepareFooter(stream); // prepareFooter calls closeFile; no need to call closeFile to match openFile.
-		}
-	}
-}
-
-void JsonFileExporter::prepareFooter(std::ofstream& stream)
+void JsonFileExporter::writeFooter(std::ofstream& stream)
 {
 	if (stream.is_open()) {
 		stream << '}' << std::endl;

@@ -49,16 +49,15 @@ bool FileExporter::ExportToFile()
 		
 		FILE_VERSION version = static_cast<FILE_VERSION>(options_.getFileVersion());
 		if ((FileExporter::VERSION_1 != version) || (FileExporter::VERSION_2 != version)) {
-			throw std::runtime_error("Unknown file version.  Version: " + std::to_string(version) + " - Version must be either 1 or 2");
+			throw std::runtime_error("FileExporter::ExportToFile: Unknown file version.  Version: " + 
+			                         std::to_string(version) + " - Version must be either 1 or 2");
 			return false;
 		}
 
 		std::ofstream file;
 		file.exceptions(std::ios::badbit | std::ios::failbit);
 
-		writeHeader(file);
-		writeData(file);
-		writeFooter(file);
+		writeFile(file);
 		
 	} catch (const std::exception& e) {
 		error_stream << e.what() << std::endl;
@@ -67,14 +66,10 @@ bool FileExporter::ExportToFile()
 	return ret;
 }
 
-bool FileExporter::needNewFile() {
-	return (!options_.getMono() && (options_.getFileVersion() == VERSION_1));
-}
-
 std::string FileExporter::getOutputFilename(const boost::filesystem::path& output_filename, 
                                             int chan_num) {
 	fs::path fn = output_filename;
-	if (needNewFile()) {
+	if (!options_.getMono() && (options_.getFileVersion() == VERSION_1)) {
 		// If this isn't a mono waveform, but writing as a version 1 file, then append
 		// the channel number to the filename.
 		fs::path ext = fn.extension();
@@ -86,23 +81,17 @@ std::string FileExporter::getOutputFilename(const boost::filesystem::path& outpu
 
 bool FileExporter::openFile(std::ofstream& stream, int chan, std::string& filename)
 {
-	if ((!stream.is_open()) || needNewFile()) {
-		if (stream.is_open()) {
-			closeFile(stream);
-		}
-		filename = getOutputFilename(output_filename_, chan);
-		stream.open(filename);
-		return true;
-	}
-	return false;
-}
-
-void FileExporter::closeFile(std::ofstream& stream, int chan)
-{
-	UNUSED(chan);
-	if (needNewFile()) {
+	if (stream.is_open()) {
 		closeFile(stream);
 	}
+	try {
+		filename = getOutputFilename(output_filename_, chan);
+		stream.open(filename);
+	} catch (std::exception &e) {
+		error_stream << "Unable to open file: " + filename + " - " + e.what() << std::endl;
+		return false;
+	}
+	return true;
 }
 
 //------------------------------------------------------------------------------

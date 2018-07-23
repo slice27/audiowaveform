@@ -38,12 +38,10 @@ class DatFileExporter: public FileExporter
 		DatFileExporter& operator=(const DatFileExporter &) = delete;
 
 	private:
-	    void writeHeader(std::ofstream& stream);
-		void writeData(std::ofstream &stream);
-		void writeFooter(std::ofstream& stream);
+	    void writeFile(std::ofstream& stream);
 		
-		void prepareHeader(std::ofstream& stream, FILE_VERSION version);
-		void prepareData(std::ofstream& stream, int chan, size_t len);
+		void writeHeader(std::ofstream& stream, FILE_VERSION version);
+		void writeData(std::ofstream& stream, int chan, size_t len);
 		
 		int bits_;
 };

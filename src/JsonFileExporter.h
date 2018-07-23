@@ -38,13 +38,11 @@ class JsonFileExporter: public FileExporter
 		JsonFileExporter& operator=(const JsonFileExporter &) = delete;
 
 	private:
-	    void writeHeader(std::ofstream& stream);
-		void writeData(std::ofstream &stream);
-		void writeFooter(std::ofstream& stream);
+	    void writeFile(std::ofstream& stream);
 		
-		void prepareHeader(std::ofstream& stream, int chan, FILE_VERSION version);
-		void prepareData(std::ofstream& stream, int chan, FILE_VERSION version);
-		void prepareFooter(std::ofstream& stream);
+		void writeHeader(std::ofstream& stream, int chan, FILE_VERSION version);
+		void writeData(std::ofstream& stream, int chan, FILE_VERSION version);
+		void writeFooter(std::ofstream& stream);
 
 };
 
