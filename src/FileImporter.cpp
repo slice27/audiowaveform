@@ -53,13 +53,18 @@ FileImporter::FileImporter(WaveformBuffer &buffer,
 {
 }
 
-bool FileImporter::openFile(std::ifstream& stream)
+bool FileImporter::openFile(std::ifstream& stream, bool binary)
 {
 	if (stream.is_open()) {
 		closeFile(stream);
 	}
 	try {
-		stream.open(input_filename_.string());
+		if (binary) {
+			stream.open(input_filename_.string(), std::ios::in);
+		} else {
+			stream.open(input_filename_.string(),
+			            std::ios::in | std::ios::binary);
+		}
 	} catch (std::exception &e) {
 		throwErrorEx("FileImporter::openFile",
 		             e.what(), input_filename_.string());

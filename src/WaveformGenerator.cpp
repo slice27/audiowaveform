@@ -200,8 +200,6 @@ void WaveformGenerator::done()
 
 //------------------------------------------------------------------------------
 
-// See BlockFile::CalcSummary in Audacity
-
 bool WaveformGenerator::process(
     const short* input_buffer,
     const int input_frame_count)

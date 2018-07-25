@@ -72,14 +72,19 @@ std::string FileExporter::getOutputFilename(const fs::path& output_filename,
 	return fn.string();
 }
 
-bool FileExporter::openFile(std::ofstream& stream, int chan, std::string& filename)
+bool FileExporter::openFile(std::ofstream& stream,
+                            int chan, std::string& filename, bool binary)
 {
 	if (stream.is_open()) {
 		closeFile(stream);
 	}
 	try {
 		filename = getOutputFilename(output_filename_, chan);
-		stream.open(filename);
+		if (binary) {
+			stream.open(filename, std::ios::binary);
+		} else {
+			stream.open(filename);
+		}
 	} catch (std::exception &e) {
 		throwErrorEx("FileExporter::openFile", e.what(), filename);
 	}

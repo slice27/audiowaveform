@@ -41,7 +41,7 @@ class FileImporter
 
 		virtual void readFile(std::ifstream& stream) = 0;
 
-		bool openFile(std::ifstream& stream);
+		bool openFile(std::ifstream& stream, bool binary = false);
 		void closeFile(std::ifstream& stream);
 
 		WaveformBuffer& buffer_;

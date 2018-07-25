@@ -50,7 +50,8 @@ class FileExporter
 		std::string getOutputFilename(const fs::path& output_filename, 
                                       int chan_num);
 		
-		bool openFile(std::ofstream& stream, int chan, std::string& filename);
+		bool openFile(std::ofstream& stream, int chan,
+		              std::string& filename, bool binary = false);
 		void closeFile(std::ofstream& stream);
 		
 		virtual void writeFile(std::ofstream& stream) = 0;
