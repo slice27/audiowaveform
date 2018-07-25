@@ -31,7 +31,8 @@
 //------------------------------------------------------------------------------
 
 void throwError(boost::format& message);
-void throwError(const std::string& method,
+
+void throwErrorEx(const std::string& method,
                 const std::string& message,
                 const std::string& filename = "");
 

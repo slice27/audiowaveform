@@ -39,13 +39,13 @@ bool FileExporter::ExportToFile()
 	try {
 		int bits = options_.getBits();
 		if (bits != 8 && bits != 16) {
-			throwError("FileExporter::ExportToFile", "Invalid bits: must be either 8 or 16");
+			throwErrorEx("FileExporter::ExportToFile", "Invalid bits: must be either 8 or 16");
 		}
 		
 		FILE_VERSION version = static_cast<FILE_VERSION>(options_.getFileVersion());
 		if ((FileExporter::VERSION_1 != version) && (FileExporter::VERSION_2 != version)) {
-			throwError("FileExporter::ExportToFile", "Unknown file version.  Version: " + 
-			           std::to_string(version) + " - Version must be either 1 or 2.");
+			throwErrorEx("FileExporter::ExportToFile", "Unknown file version.  Version: " + 
+			             std::to_string(version) + " - Version must be either 1 or 2.");
 		}
 
 		std::ofstream file;
@@ -53,8 +53,8 @@ bool FileExporter::ExportToFile()
 
 		writeFile(file);
 		
-	} catch (const std::exception& e) {
-		throw;
+	} catch (const std::runtime_error& e) {
+		throw e;
 	}
 	return true;
 }
@@ -81,7 +81,7 @@ bool FileExporter::openFile(std::ofstream& stream, int chan, std::string& filena
 		filename = getOutputFilename(output_filename_, chan);
 		stream.open(filename);
 	} catch (std::exception &e) {
-		throwError("FileExporter::openFile", e.what(), filename);
+		throwErrorEx("FileExporter::openFile", e.what(), filename);
 	}
 	return true;
 }

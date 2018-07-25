@@ -67,8 +67,8 @@ void JsonFileExporter::writeFile(std::ofstream& stream)
 			}
 		} break;
 		default: 
-			throwError("JsonFileExporter::writeFile", "unknown file version " + 
-			           std::to_string(version), filename);
+			throwErrorEx("JsonFileExporter::writeFile", "unknown file version " + 
+			             std::to_string(version), filename);
 	}
 }
 
@@ -93,8 +93,8 @@ void JsonFileExporter::writeData(std::ofstream& stream, int chan,
 			case FileExporter::VERSION_1: stream << "\t\"data\":[" << std::endl; break;
 			case FileExporter::VERSION_2: stream << "\t\"chan" << chan << "\":[" << std::endl; break;
 			default:
-				throwError("JsonFileExporter::writeData", "unknown file version " +
-				           std::to_string(version), filename);
+				throwErrorEx("JsonFileExporter::writeData", "unknown file version " +
+				             std::to_string(version), filename);
 		}
 		int chanBufferSize = buffer_.getSize(chan);
 		if (chanBufferSize > 0) {
@@ -108,8 +108,8 @@ void JsonFileExporter::writeData(std::ofstream& stream, int chan,
 		stream << std::endl << "\t]" << std::endl;
 		return;
 	}
-	throwError("JsonFileExporter::writeData", 
-	           "Channel " + std::to_string(chan) + "does not exist.", filename);
+	throwErrorEx("JsonFileExporter::writeData", 
+	             "Channel " + std::to_string(chan) + "does not exist.", filename);
 }
 
 void JsonFileExporter::writeFooter(std::ofstream& stream)

@@ -115,16 +115,16 @@ void PngFileExporter::writeFile(std::ofstream& stream)
 			    output_buffer,
 			    output_samples_per_pixel_))
 			{
-				throwError("PngFileExporter::writeFile", 
-				           "Unable to rescale render buffer.", filename);
+				throwErrorEx("PngFileExporter::writeFile", 
+				             "Unable to rescale render buffer.", filename);
 			}
 			// Render from the now rescaled output_buffer.
 			render_buffer = &output_buffer;
 		}
 		else if (output_samples_per_pixel_ < input_samples_per_pixel) {
 			// Can't rescale.  Not enough resolution on input.
-			throwError("PngFileExporter::writeFile", "Invalid zoom, minimum: " + 
-			           std::to_string(input_samples_per_pixel), filename);
+			throwErrorEx("PngFileExporter::writeFile", "Invalid zoom, minimum: " + 
+			             std::to_string(input_samples_per_pixel), filename);
 		}
 		
 		
@@ -138,13 +138,13 @@ void PngFileExporter::writeFile(std::ofstream& stream)
 			                 options_.isAutoAmplitudeScale(),
 			                 options_.getAmplitudeScale()))
 		{
-			throwError("PngFileExporter::writeFile",
-			           "Unable to render PNG.", filename);
+			throwErrorEx("PngFileExporter::writeFile",
+			             "Unable to render PNG.", filename);
 		}
 		if (!renderer.saveAsPng(filename.c_str(),
 		                        options_.getPngCompressionLevel())) {
-			throwError("PngFileExporter::writeFile",
-			           "Unable to save PNG.", filename);
+			throwErrorEx("PngFileExporter::writeFile",
+			             "Unable to save PNG.", filename);
 		}
 	});
 }

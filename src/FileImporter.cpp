@@ -27,14 +27,14 @@ bool FileImporter::ImportFromFile()
 {
 	int bits = options_.getBits();
 	if (bits != 8 && bits != 16) {
-		throwError("FileImporter::ImportFromFile", "invalid bits - must be either 8 or 16");
+		throwErrorEx("FileImporter::ImportFromFile", "invalid bits - must be either 8 or 16");
 	}
 	
 	FileExporter::FILE_VERSION version = 
 		static_cast<FileExporter::FILE_VERSION>(options_.getFileVersion());
 	if ((FileExporter::VERSION_1 != version) && (FileExporter::VERSION_2 != version)) {
-		throwError("FileImporter::ImportFromFile", "Unknown file version.  Version: " + 
-		           std::to_string(version) + " - Version must be either 1 or 2");
+		throwErrorEx("FileImporter::ImportFromFile", "Unknown file version.  Version: " + 
+		             std::to_string(version) + " - Version must be either 1 or 2");
 	}
 
 	std::ifstream file;
@@ -61,8 +61,8 @@ bool FileImporter::openFile(std::ifstream& stream)
 	try {
 		stream.open(input_filename_.string());
 	} catch (std::exception &e) {
-		throwError("FileImporter::openFile",
-		           e.what(), input_filename_.string());
+		throwErrorEx("FileImporter::openFile",
+		             e.what(), input_filename_.string());
 	}
 	return true;
 }
