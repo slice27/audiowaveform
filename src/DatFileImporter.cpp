@@ -22,7 +22,6 @@
 #include "DatFileImporter.h"
 #include "Streams.h"
 #include "WaveformBuffer.h"
-#include "Utils.h"
 
 //------------------------------------------------------------------------------
 
@@ -79,29 +78,26 @@ DatFileImporter::DatFileImporter(WaveformBuffer &buffer,
 				
 void DatFileImporter::readFile(std::ifstream& stream)
 {
-	UNUSED(stream);
-	std::ifstream file;
-    file.exceptions(std::ios::badbit | std::ios::failbit);
+	if (openFile(stream, true)) {
+		std::string filename = input_filename_.string();
+		try {
+			readHeader(stream);
+			readData(stream);
+		} catch (std::exception& e) {
 
-    uint32_t size = 0;
-	std::string filename = input_filename_.string();
-    try {
-        file.open(filename, std::ios::in | std::ios::binary);
-		readHeader(file);
-		readData(file);
-	} catch (std::exception& e) {
+			// Note: Catching std::exception instead of std::ios::failure is a
+			// workaround for a g++ v5 / v6 libstdc++ ABI bug.
+			//
+			// See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66145
+			// and http://stackoverflow.com/questions/38471518
 
-		// Note: Catching std::exception instead of std::ios::failure is a
-        // workaround for a g++ v5 / v6 libstdc++ ABI bug.
-        //
-        // See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66145
-        // and http://stackoverflow.com/questions/38471518
-
-        if (!file.eof()) {
-			throwErrorEx("DatFileImporter::load", strerror(errno), filename);
-        }
+			if (!stream.eof()) {
+				throwErrorEx("DatFileImporter::readFile", 
+				             strerror(errno), filename);
+			}
+		}
+		stream.clear();
 	}
-	file.clear();
 }
 
 
