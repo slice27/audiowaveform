@@ -65,7 +65,7 @@ bool WaveformRescaler::rescale(
 		output_buffer.setSampleRate(sample_rate_);
 		output_buffer.setSamplesPerPixel(samples_per_pixel);
 
-		output_stream << "Resampling channel " << chan << std::endl
+		output_stream << "Resampling channel " << chan
 		              << "\nInput scale: " << input_samples_per_pixel << " samples/pixel"
 		              << "\nOutput scale: " << samples_per_pixel << " samples/pixel"
 		              << "\nInput buffer size: " << input_buffer_size << std::endl;

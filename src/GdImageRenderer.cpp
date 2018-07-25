@@ -416,7 +416,8 @@ bool GdImageRenderer::saveAsPng(
     FILE* output_file = fopen(filename, "wb");
 
     if (output_file != nullptr) {
-        output_stream << "Writing PNG file: " << filename << '\n';
+        output_stream << "Writing PNG file: " << filename
+		              << std::endl << std::endl;
 
         gdImagePngEx(image_, output_file, compression_level);
 

@@ -47,6 +47,7 @@ class DatFileImporter: public FileImporter
 		FileExporter::FILE_VERSION version_;
 		uint32_t channels_;
 		int32_t size_;
+
 };
 
 #endif

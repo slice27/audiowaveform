@@ -22,51 +22,12 @@
 #include "DatFileImporter.h"
 #include "Streams.h"
 #include "WaveformBuffer.h"
-
-//------------------------------------------------------------------------------
-
-static int32_t readInt32(std::istream& stream)
-{
-    int32_t value;
-    stream.read(reinterpret_cast<char*>(&value), sizeof(value));
-
-    return value;
-}
-
-//------------------------------------------------------------------------------
-
-static uint32_t readUInt32(std::istream& stream)
-{
-    uint32_t value;
-    stream.read(reinterpret_cast<char*>(&value), sizeof(value));
-
-    return value;
-}
-
-//------------------------------------------------------------------------------
-
-static int16_t readInt16(std::istream& stream)
-{
-    int16_t value;
-    stream.read(reinterpret_cast<char*>(&value), sizeof(value));
-
-    return value;
-}
-
-//------------------------------------------------------------------------------
-
-static int8_t readInt8(std::istream& stream)
-{
-    int8_t value;
-    stream.read(reinterpret_cast<char*>(&value), sizeof(value));
-
-    return value;
-}
+#include "Utils.h"
 
 //------------------------------------------------------------------------------
 
 template<typename T>
-static void read(std::istream& stream)
+static T read(std::istream& stream)
 {
 	T value;
 	stream.read(reinterpret_cast<char*>(&value), sizeof(T));
@@ -74,6 +35,33 @@ static void read(std::istream& stream)
 	return value;
 }
 
+//------------------------------------------------------------------------------
+
+static int32_t readInt32(std::istream& stream)
+{
+    return read<int32_t>(stream);
+}
+
+//------------------------------------------------------------------------------
+
+static uint32_t readUInt32(std::istream& stream)
+{
+    return read<uint32_t>(stream);
+}
+
+//------------------------------------------------------------------------------
+
+static int16_t readInt16(std::istream& stream)
+{
+	return read<int16_t>(stream);
+}
+
+//------------------------------------------------------------------------------
+
+static int8_t readInt8(std::istream& stream)
+{
+	return read<int8_t>(stream);
+}
 
 //------------------------------------------------------------------------------
 
@@ -91,13 +79,29 @@ DatFileImporter::DatFileImporter(WaveformBuffer &buffer,
 				
 void DatFileImporter::readFile(std::ifstream& stream)
 {
+	UNUSED(stream);
+	std::ifstream file;
+    file.exceptions(std::ios::badbit | std::ios::failbit);
+
+    uint32_t size = 0;
 	std::string filename = input_filename_.string();
-	if (openFile(stream)) {
-		output_stream << "Reading waveform data file: " << filename << std::endl;
-		readHeader(stream);
-		readData(stream);
-		closeFile(stream);
+    try {
+        file.open(filename, std::ios::in | std::ios::binary);
+		readHeader(file);
+		readData(file);
+	} catch (std::exception& e) {
+
+		// Note: Catching std::exception instead of std::ios::failure is a
+        // workaround for a g++ v5 / v6 libstdc++ ABI bug.
+        //
+        // See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66145
+        // and http://stackoverflow.com/questions/38471518
+
+        if (!file.eof()) {
+			throwErrorEx("DatFileImporter::load", strerror(errno), filename);
+        }
 	}
+	file.clear();
 }
 
 
@@ -106,9 +110,9 @@ void DatFileImporter::readFile(std::ifstream& stream)
 void DatFileImporter::readHeader(std::ifstream& stream)
 {
 	version_ = static_cast<FileExporter::FILE_VERSION>(readInt32(stream));
-	if ((FileExporter::VERSION_1 != version_) || 
+	if ((FileExporter::VERSION_1 != version_) &&
 	    (FileExporter::VERSION_2 != version_)) {
-		throwError("DatFileImporter::readHeader", "Unknown file version " +
+		throwErrorEx("DatFileImporter::readHeader", "Unknown file version " +
 		           std::to_string(version_), input_filename_.string());
 	}
 	
@@ -133,8 +137,8 @@ void DatFileImporter::readHeader(std::ifstream& stream)
 void DatFileImporter::readData(std::ifstream& stream)
 {
 	int bits = buffer_.getBits();
-	short min, max;
-	while (stream.good()) {
+	short min = 0, max = 0;
+	for (int32_t size = 0; size < size_; ++size) {
 		for (uint32_t chan = 0; chan < channels_; ++chan) {
 			switch (bits) {
 				case 8: {
@@ -145,25 +149,23 @@ void DatFileImporter::readData(std::ifstream& stream)
 					min = readInt16(stream);
 					max = readInt16(stream);
 				} break;
-				
-				buffer_.appendSamples(min, max, chan);
 			}
+			buffer_.appendSamples(min, max, chan);
 		}
 	}
-
+	
+	output_stream << "Completed import of " << input_filename_ 
+	              << ".  Total points: " << buffer_.getSize() << std::endl;
 	if (buffer_.getSize() != size_) {
-		throwError("DatFileImporter::readData", 
+		throwErrorEx("DatFileImporter::readData", 
 		    "Corrupted input file. expected " + 
 		    std::to_string(size_) + " points, but " +
 		    std::to_string(buffer_.getSize()) + " points found.",
-			input_filename_.string());
+		    input_filename_.string());
 	}
 }
-
-
-
 /*
-bool WaveformBuffer::load(const char* filename)
+bool DatFileImporter::load(const char* filename)
 {
     bool success = true;
 
@@ -179,70 +181,58 @@ bool WaveformBuffer::load(const char* filename)
 
         const int32_t version = readInt32(file);
 
-        if (version != 1) {
-            reportReadError(
-                filename,
-                boost::str(boost::format("Cannot load data file version: %1%") % version).c_str()
-            );
-
+        if ((version != 1) && (version !=2)) {
+			throwErrorEx("DatFileImporter::load", "Cannot load data file version: " + std::to_string(version));
             return false;
         }
 
         const uint32_t flags = readUInt32(file);
 
-        sample_rate_       = readInt32(file);
-        samples_per_pixel_ = readInt32(file);
+		buffer_.setBits((flags & 0x01) ? 8 : 16);
+        buffer_.setSampleRate(readInt32(file));
+		buffer_.setSamplesPerPixel(readInt32(file));
 
         size = readUInt32(file);
+		int channels = 1;
+		if (version == 2) {
+			channels = readUInt32(file);
+		}
 
-        if ((flags & FLAG_8_BIT) != 0) {
-            bits_ = 8;
-
+        if ((flags & 0x01) != 0) {
             for (uint32_t i = 0; i < size; ++i) {
-                int8_t min_value = readInt8(file);
-                channels_[0].push_back(static_cast<short>(
-				                       static_cast<int16_t>(min_value) * 256));
-
-                int8_t max_value = readInt8(file);
-                channels_[0].push_back(static_cast<short>(
-				                       static_cast<int16_t>(max_value) * 256));
+				for (int chan = 0; chan < channels; ++chan) {
+					int8_t min_value = readInt8(file);
+					int8_t max_value = readInt8(file);
+					buffer_.appendSamples(static_cast<int16_t>(min_value) * 256,
+										  static_cast<int16_t>(max_value) * 256,
+										  chan);
+				}
             }
         }
         else {
-            bits_ = 16;
-
             for (uint32_t i = 0; i < size; ++i) {
-                int16_t min_value = readInt16(file);
-                channels_[0].push_back(min_value);
-
-                int16_t max_value = readInt16(file);
-                channels_[0].push_back(max_value);
+				for (int chan = 0; chan < channels; ++chan) {
+					int16_t min_value = readInt16(file);
+					int16_t max_value = readInt16(file);
+					buffer_.appendSamples(min_value, max_value, chan);
+				}
             }
         }
 
-        output_stream << "Sample rate: " << sample_rate_ << " Hz"
-                      << "\nBits: " << bits_
-                      << "\nSamples per pixel: " << samples_per_pixel_
-                      << "\nLength: " << getSize() << " points" << std::endl;
+        output_stream << "Sample rate: " << buffer_.getSampleRate() << " Hz"
+                      << "\nBits: " << buffer_.getBits()
+                      << "\nSamples per pixel: " << buffer_.getSamplesPerPixel()
+                      << "\nLength: " << buffer_.getSize() << " points" << std::endl;
 
-        if (samples_per_pixel_ < 2) {
-            reportReadError(
-                filename,
-                boost::str(
-                    boost::format("Invalid samples per pixel: %1%, minimum 2") % samples_per_pixel_
-                ).c_str()
-            );
-
+        if (buffer_.getSamplesPerPixel() < 2) {
+			throwErrorEx("DatFileImporter::load",
+			             "Invalid samples per pixel: " + 
+						 std::to_string(buffer_.getSamplesPerPixel()) + ", minimum 2");
             success = false;
         }
-        else if (sample_rate_ < 1) {
-            reportReadError(
-                filename,
-                boost::str(
-                    boost::format("Invalid sample rate: %1% Hz, minimum 1 Hz") % sample_rate_
-                ).c_str()
-            );
-
+        else if (buffer_.getSampleRate() < 1) {
+			throwErrorEx("DatFileImporter::load",
+			             "Invalid sample rate: " + std::to_string(buffer_.getSampleRate()) + " Hz, minimum 1 Hz");
             success = false;
         }
 
@@ -257,12 +247,12 @@ bool WaveformBuffer::load(const char* filename)
         // and http://stackoverflow.com/questions/38471518
 
         if (!file.eof()) {
-            reportReadError(filename, strerror(errno));
+			throwErrorEx("DatFileImporter::load", strerror(errno), filename);
             success = false;
         }
     }
 
-    const int actual_size = getSize();
+    const int actual_size = buffer_.getSize();
 
     if (size != static_cast<uint32_t>(actual_size)) {
         error_stream << "Expected " << size << " points, read "

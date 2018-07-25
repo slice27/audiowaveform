@@ -25,14 +25,6 @@
 #include "Options.h"
 #include "Utils.h"
 
-/*******************************************************************************
-*
-* If a version 1 export is requested, this should behave as expected.  If a 
-* version 2 file is requested, the header is written to the file, and the audio
-* channel data is written in a non-interleaved mode.  This means that all
-* channel 0 data will come before the channel 1 data.
-*
-*******************************************************************************/
 
 //------------------------------------------------------------------------------
 template<typename T>
@@ -45,7 +37,6 @@ static void write(std::ostream& stream, T value)
 
 static void writeInt32(std::ostream& stream, int32_t value)
 {
-    //stream.write(reinterpret_cast<const char*>(&value), sizeof(value));
 	write(stream, value);
 }
 
@@ -53,7 +44,6 @@ static void writeInt32(std::ostream& stream, int32_t value)
 
 static void writeUInt32(std::ostream& stream, uint32_t value)
 {
-    //stream.write(reinterpret_cast<const char*>(&value), sizeof(value));
 	write(stream, value);
 }
 
@@ -85,7 +75,8 @@ DatFileExporter::DatFileExporter(WaveformBuffer &buffer,
 void DatFileExporter::writeFile(std::ofstream& stream)
 {
 	if (!buffer_.channelSizesMatch()) {
-		throwError("DatFileExporter::writeFile", "channel sizes do not match.");
+		throwErrorEx("DatFileExporter::writeFile",
+		             "channel sizes do not match.");
 	}
 	
 	std::string filename;
@@ -95,8 +86,9 @@ void DatFileExporter::writeFile(std::ofstream& stream)
 		case FileExporter::VERSION_1: {
 			// Write a dat file for each channel separately.
 			for (int chan = 0; chan < buffer_.getNumChannels(); ++chan) {
-				if (openFile(stream, chan, filename)) {
-					output_stream << "Writing header to output file: " << filename << std::endl;
+				if (openFile(stream, chan, filename, true)) {
+					output_stream << "Writing header to output file: "
+					              << filename << std::endl;
 					writeHeader(stream, version);
 					output_stream << "Writing channel " << std::to_string(chan) 
 					              << " to output file: " << filename << std::endl;
@@ -109,10 +101,12 @@ void DatFileExporter::writeFile(std::ofstream& stream)
 		} break;
 		case FileExporter::VERSION_2: {
 			// Write one dat file with each channel interleaved.
-			if (openFile(stream, 0, filename)) {
-				output_stream << "Writing header to output file: " << filename << std::endl;
+			if (openFile(stream, 0, filename, true)) {
+				output_stream << "Writing header to output file: "
+				              << filename << std::endl;
 				writeHeader(stream, version);
-				output_stream << "Writing channel data to output file: " << filename << std::endl;
+				output_stream << "Writing channel data to output file: " 
+				              << filename << std::endl;
 				for (WaveformBuffer::size_type len = 0; len < size; ++len) {
 					for (int chan = 0; chan < buffer_.getNumChannels(); ++chan) {
 						writeData(stream, chan, len);
@@ -122,8 +116,8 @@ void DatFileExporter::writeFile(std::ofstream& stream)
 			}
 		} break;
 		default:
-			throwError("DatFileExporter::writeFile",
-			           "unknown file version " + std::to_string(version));
+			throwErrorEx("DatFileExporter::writeFile",
+			             "unknown file version " + std::to_string(version));
 	}
 }
 
