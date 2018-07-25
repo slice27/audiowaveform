@@ -309,7 +309,6 @@ bool OptionHandler::renderWaveformImage(
 
         output_samples_per_pixel = buffer.getSamplesPerPixel();
     }
-
 	PngFileExporter png(buffer, options, output_filename, output_samples_per_pixel);
 	ret = png.ExportToFile();
 	return ret;

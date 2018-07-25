@@ -72,7 +72,7 @@ std::vector<WaveformBuffer> WaveformBuffer::SplitChannels()
 		b.sample_rate_       = sample_rate_;
 		b.samples_per_pixel_ = samples_per_pixel_;
 		b.bits_              = bits_;
-		b.channels_.push_back(channels_[i]);
+		b.channels_[0]       = channels_[i];
 		ret.push_back(b);
 	}
 	return ret;
@@ -117,7 +117,7 @@ int WaveformBuffer::getSamplesPerPixel() const
 //------------------------------------------------------------------------------
 
 void WaveformBuffer::setBits(int bits) {
-	if ((bits != 8) || (bits != 16)) {
+	if ((bits != 8) && (bits != 16)) {
 		throw std::runtime_error("setBits: Invalid bits: must be either 8 or 16");
 	} else {
 		bits_ = bits;

@@ -43,7 +43,7 @@ bool FileExporter::ExportToFile()
 		}
 		
 		FILE_VERSION version = static_cast<FILE_VERSION>(options_.getFileVersion());
-		if ((FileExporter::VERSION_1 != version) || (FileExporter::VERSION_2 != version)) {
+		if ((FileExporter::VERSION_1 != version) && (FileExporter::VERSION_2 != version)) {
 			throwError("FileExporter::ExportToFile", "Unknown file version.  Version: " + 
 			           std::to_string(version) + " - Version must be either 1 or 2.");
 		}

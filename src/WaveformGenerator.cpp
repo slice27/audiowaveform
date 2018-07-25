@@ -224,7 +224,6 @@ bool WaveformGenerator::process(
 			process_channel(sample, MONO_CHANNEL);
 		}
     }
-
     return true;
 }
 

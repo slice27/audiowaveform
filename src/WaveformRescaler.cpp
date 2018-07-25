@@ -58,79 +58,83 @@ bool WaveformRescaler::rescale(
     assert(input_samples_per_pixel > 0);
     assert(output_samples_per_pixel_ > input_samples_per_pixel);
 
-    const int input_buffer_size = input_buffer.getSize();
+	for(int chan = 0; chan < input_buffer.getNumChannels(); ++chan) {
+		
+		const int input_buffer_size = input_buffer.getSize();
 
-    output_buffer.setSampleRate(sample_rate_);
-    output_buffer.setSamplesPerPixel(samples_per_pixel);
+		output_buffer.setSampleRate(sample_rate_);
+		output_buffer.setSamplesPerPixel(samples_per_pixel);
 
-    output_stream << "Input scale: " << input_samples_per_pixel << " samples/pixel"
-                  << "\nOutput scale: " << samples_per_pixel << " samples/pixel"
-                  << "\nInput buffer size: " << input_buffer_size << std::endl;
+		output_stream << "Resampling channel " << chan << std::endl
+		              << "\nInput scale: " << input_samples_per_pixel << " samples/pixel"
+		              << "\nOutput scale: " << samples_per_pixel << " samples/pixel"
+		              << "\nInput buffer size: " << input_buffer_size << std::endl;
 
-    short min = 0;
-    short max = 0;
+		short min = 0;
+		short max = 0;
 
-    if (input_buffer_size > 0) {
-        min = input_buffer.getMinSample(0);
-        max = input_buffer.getMaxSample(0);
-    }
+		if (input_buffer_size > 0) {
+			min = input_buffer.getMinSample(0, chan);
+			max = input_buffer.getMaxSample(0, chan);
+		}
 
-    int input_index  = 0;
-    int output_index = 0;
+		int input_index  = 0;
+		int output_index = 0;
 
-    int last_input_index = 0;
+		int last_input_index = 0;
 
-    while (input_index < input_buffer_size) {
-        while (sampleAtPixel(output_index) / input_samples_per_pixel == input_index) {
-            if (output_index > 0) {
-                output_buffer.appendSamples(min, max);
-            }
+		while (input_index < input_buffer_size) {
+			while (sampleAtPixel(output_index) / input_samples_per_pixel == input_index) {
+				if (output_index > 0) {
+					output_buffer.appendSamples(min, max, chan);
+				}
 
-            last_input_index = input_index;
+				last_input_index = input_index;
 
-            output_index++;
+				output_index++;
 
-            const int where      = sampleAtPixel(output_index);
-            const int prev_where = sampleAtPixel(output_index - 1);
+				const int where      = sampleAtPixel(output_index);
+				const int prev_where = sampleAtPixel(output_index - 1);
 
-            if (where != prev_where) {
-                min = std::numeric_limits<short>::max();
-                max = std::numeric_limits<short>::min();
-            }
-        }
+				if (where != prev_where) {
+					min = std::numeric_limits<short>::max();
+					max = std::numeric_limits<short>::min();
+				}
+			}
 
-        const int where = sampleAtPixel(output_index);
+			const int where = sampleAtPixel(output_index);
 
-        int stop = where / input_samples_per_pixel;
+			int stop = where / input_samples_per_pixel;
 
-        if (stop > input_buffer_size) {
-            stop = input_buffer_size;
-        }
+			if (stop > input_buffer_size) {
+				stop = input_buffer_size;
+			}
 
-        while (input_index < stop) {
-            short value = input_buffer.getMinSample(input_index);
+			while (input_index < stop) {
+				short value = input_buffer.getMinSample(input_index, chan);
 
-            if (value < min) {
-                min = value;
-            }
+				if (value < min) {
+					min = value;
+				}
 
-            value = input_buffer.getMaxSample(input_index);
+				value = input_buffer.getMaxSample(input_index, chan);
 
-            if (value > max) {
-                max = value;
-            }
+				if (value > max) {
+					max = value;
+				}
 
-            input_index++;
-        }
-    }
+				input_index++;
+			}
+		}
 
-    if (input_index != last_input_index) {
-        output_buffer.appendSamples(min, max);
-    }
+		if (input_index != last_input_index) {
+			output_buffer.appendSamples(min, max, chan);
+		}
 
-    output_stream << "Generated " << output_buffer.getSize() << " points"
-                  << std::endl;
-
+		output_stream << "Generated " << output_buffer.getSize() 
+		              << " points for channel " << chan << std::endl;
+	}
+	
     return true;
 }
 
