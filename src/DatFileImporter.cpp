@@ -22,6 +22,8 @@
 #include "DatFileImporter.h"
 #include "Streams.h"
 #include "WaveformBuffer.h"
+#include "Utils.h"
+#include "Options.h"
 
 //------------------------------------------------------------------------------
 
@@ -78,26 +80,28 @@ DatFileImporter::DatFileImporter(WaveformBuffer &buffer,
 				
 void DatFileImporter::readFile(std::ifstream& stream)
 {
-	if (openFile(stream, true)) {
-		std::string filename = input_filename_.string();
-		try {
-			readHeader(stream);
-			readData(stream);
-		} catch (std::exception& e) {
+	UNUSED(stream);
+	std::ifstream file;
+    file.exceptions(std::ios::badbit | std::ios::failbit);
 
-			// Note: Catching std::exception instead of std::ios::failure is a
-			// workaround for a g++ v5 / v6 libstdc++ ABI bug.
-			//
-			// See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66145
-			// and http://stackoverflow.com/questions/38471518
+	std::string filename = input_filename_.string();
+    try {
+        file.open(filename, std::ios::in | std::ios::binary);
+		readHeader(file);
+		readData(file);
+	} catch (std::exception& e) {
 
-			if (!stream.eof()) {
-				throwErrorEx("DatFileImporter::readFile", 
-				             strerror(errno), filename);
-			}
-		}
-		stream.clear();
+		// Note: Catching std::exception instead of std::ios::failure is a
+        // workaround for a g++ v5 / v6 libstdc++ ABI bug.
+        //
+        // See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66145
+        // and http://stackoverflow.com/questions/38471518
+
+        if (!file.eof()) {
+			throwErrorEx("DatFileImporter::load", strerror(errno), filename);
+        }
 	}
+	file.clear();
 }
 
 
@@ -134,19 +138,24 @@ void DatFileImporter::readData(std::ifstream& stream)
 {
 	int bits = buffer_.getBits();
 	short min = 0, max = 0;
+	bool mono = (options_.getMono() && (channels_ > 1));
+	
 	for (int32_t size = 0; size < size_; ++size) {
-		for (uint32_t chan = 0; chan < channels_; ++chan) {
-			switch (bits) {
-				case 8: {
-					min = static_cast<short>(readInt8(stream) * 256);
-					max = static_cast<short>(readInt8(stream) * 256);
-				} break;
-				case 16: {
-					min = readInt16(stream);
-					max = readInt16(stream);
-				} break;
+		if (mono) {
+			int min_value = 0, max_value = 0;
+			for (uint32_t chan = 0; chan < channels_; ++chan) {
+				getSamples(stream, bits, min, max);
+				min_value += min;
+				max_value += max;
 			}
-			buffer_.appendSamples(min, max, chan);
+			min = static_cast<short>(min_value / channels_);
+			max = static_cast<short>(max_value / channels_);
+			buffer_.appendSamples(min, max, 0);
+		} else {
+			for (uint32_t chan = 0; chan < channels_; ++chan) {
+				getSamples(stream, bits, min, max);
+				buffer_.appendSamples(min, max, chan);
+			}
 		}
 	}
 	
@@ -158,6 +167,21 @@ void DatFileImporter::readData(std::ifstream& stream)
 		    std::to_string(size_) + " points, but " +
 		    std::to_string(buffer_.getSize()) + " points found.",
 		    input_filename_.string());
+	}
+}
+
+void DatFileImporter::getSamples(std::ifstream& stream, int bits, 
+                                 short& min, short& max)
+{
+	switch (bits) {
+		case 8: {
+			min = static_cast<short>(readInt8(stream) * 256);
+			max = static_cast<short>(readInt8(stream) * 256);
+		} break;
+		case 16: {
+			min = readInt16(stream);
+			max = readInt16(stream);
+		} break;
 	}
 }
 /*

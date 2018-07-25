@@ -39,7 +39,13 @@ TxtFileExporter::TxtFileExporter(WaveformBuffer &buffer,
 
 void TxtFileExporter::writeFile(std::ofstream& stream) {
 	if (!buffer_.channelSizesMatch()) {
-		throwErrorEx("TxtFileExporter::writeHeader", "channel sizes do not match.");
+		std::stringstream ss;
+		ss << "channel sizes do not match. " << std::endl;
+		for (int i = 0; i < buffer_.getNumChannels(); ++i) {
+			ss << "\tChannel: " << i << " size: "
+			   << buffer_.getSize(i) << std::endl;
+		}
+		throwErrorEx("TxtFileExporter::writeHeader", ss.str());
 	}
 	std::string filename;
 	FILE_VERSION version = static_cast<FILE_VERSION>(options_.getFileVersion());

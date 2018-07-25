@@ -75,10 +75,14 @@ DatFileExporter::DatFileExporter(WaveformBuffer &buffer,
 void DatFileExporter::writeFile(std::ofstream& stream)
 {
 	if (!buffer_.channelSizesMatch()) {
-		throwErrorEx("DatFileExporter::writeFile",
-		             "channel sizes do not match.");
+		std::stringstream ss;
+		ss << "channel sizes do not match. " << std::endl;
+		for (int i = 0; i < buffer_.getNumChannels(); ++i) {
+			ss << "\tChannel: " << i << " size: "
+			   << buffer_.getSize(i) << std::endl;
+		}
+		throwErrorEx("TxtFileExporter::writeHeader", ss.str());
 	}
-	
 	std::string filename;
 	FILE_VERSION version = static_cast<FILE_VERSION>(options_.getFileVersion());
 	WaveformBuffer::size_type size = buffer_.getSize();

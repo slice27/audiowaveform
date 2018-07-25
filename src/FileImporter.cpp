@@ -39,6 +39,7 @@ bool FileImporter::ImportFromFile()
 	}
 
 	std::ifstream file;
+	file.exceptions(std::ios::badbit | std::ios::failbit);
 	readFile(file);
 
 	return true;
@@ -59,7 +60,6 @@ bool FileImporter::openFile(std::ifstream& stream, bool binary)
 		closeFile(stream);
 	}
 	try {
-		stream.exceptions(std::ios::badbit | std::ios::failbit);
 		if (binary) {
 			stream.open(input_filename_.string(), std::ios::in);
 		} else {

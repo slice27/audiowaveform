@@ -44,6 +44,9 @@ class DatFileImporter: public FileImporter
 		void readHeader(std::ifstream& stream);
 		void readData(std::ifstream& stream);
 
+		void getSamples(std::ifstream& stream, int bits,
+		                short& min, short& max);
+
 		FileExporter::FILE_VERSION version_;
 		uint32_t channels_;
 		int32_t size_;
