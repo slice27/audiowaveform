@@ -282,7 +282,7 @@ target_link_libraries(audiowaveform ${LIBS})
 #-------------------------------------------------------------------------------
 
 if (NOT DEFINED ENABLE_TESTS)
-    set(ENABLE_TESTS 0)
+    set(ENABLE_TESTS 1)
 endif()
 
 if(ENABLE_TESTS)
