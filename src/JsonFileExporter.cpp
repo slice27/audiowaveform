@@ -88,7 +88,8 @@ void JsonFileExporter::writeData(std::ofstream& stream, int chan,
                                  FILE_VERSION version, std::string filename)
 {
 	int divisor = ((buffer_.getBits() == 8) ? 256 : 1);
-	if (buffer_.getNumChannels() > chan) {
+	int num_chan = buffer_.getNumChannels();
+	if (num_chan > chan) {
 		switch (version) {
 			case FileExporter::VERSION_1: stream << "\t\"data\":[" << std::endl; break;
 			case FileExporter::VERSION_2: stream << "\t\"chan" << chan << "\":[" << std::endl; break;
@@ -105,7 +106,7 @@ void JsonFileExporter::writeData(std::ofstream& stream, int chan,
 					   << ',' << (buffer_.getMaxSample(i, chan) / divisor);
 			}
 		}
-		stream << std::endl << "\t]" << std::endl;
+		stream << std::endl << "\t]" << (((chan+1) < num_chan) ? "," : "") << std::endl;
 		return;
 	}
 	throwErrorEx("JsonFileExporter::writeData", 

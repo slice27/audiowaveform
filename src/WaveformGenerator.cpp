@@ -191,7 +191,7 @@ void WaveformGenerator::done()
 		if (counts_[chan] > RESET_COUNT) {
 			buffer_.appendSamples(static_cast<short>(mins_[chan]), 
 			                      static_cast<short>(maxs_[chan]), chan);
-			output_stream << "(channel " << chan+1 << ") Generated " 
+			output_stream << "(channel " << chan << ") Generated " 
 			              << buffer_.getSize(chan) << " points" << std::endl;
 			reset(static_cast<int>(chan));
 		}

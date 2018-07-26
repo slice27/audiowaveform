@@ -206,6 +206,9 @@ bool OptionHandler::generateWaveformData(
 	if (output_file_ext == ".dat") {
 		DatFileExporter dat(buffer, options, output_filename);
 		ret = dat.ExportToFile();
+	} else if (output_file_ext == ".txt"){
+		TxtFileExporter txt(buffer, options, output_filename);
+		ret = txt.ExportToFile();
 	} else {
 		JsonFileExporter json(buffer, options, output_filename);
 		ret = json.ExportToFile();
@@ -342,9 +345,9 @@ bool OptionHandler::run(const Options& options)
                 output_filename
             );
         }
-        else if ((input_file_ext == ".mp3" ||
-                  useLibSndFile(input_file_ext)) &&
-                 (output_file_ext == ".dat" || output_file_ext == ".json")) {
+        else if ((input_file_ext == ".mp3" || useLibSndFile(input_file_ext)) &&
+                 (output_file_ext == ".dat" || output_file_ext == ".json" ||
+		          output_file_ext == ".txt")) {
             success = generateWaveformData(
                 input_filename,
                 output_filename,
